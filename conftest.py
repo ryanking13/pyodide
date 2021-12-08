@@ -1011,7 +1011,7 @@ def playwright_common(request, playwright_browsers, web_server_main, load_pyodid
 
 
 @pytest.fixture(params=["firefox", "chrome"], scope="function")
-def playwright(request, playwright_browsers, web_server_main):
+def playwright_standalone(request, playwright_browsers, web_server_main):
     # Avoid loading the fixture if the test is going to be skipped
     _maybe_skip_test(request.node)
 
@@ -1025,6 +1025,34 @@ def playwright(request, playwright_browsers, web_server_main):
                 print(playwright.logs)
 
 
+# playwright instance cached at the module level
+@pytest.fixture(params=["firefox", "chrome"], scope="module")
+def playwright_module_scope(request, playwright_browsers, web_server_main):
+    with playwright_common(request, playwright_browsers, web_server_main) as playwright:
+        yield playwright
+
+
+# Hypothesis is unhappy with function scope fixtures. Instead, use the
+# module scope fixture `playwright_module_scope` and use:
+# `with playwright_context_manager(playwright_module_scope) as playwright`
+@contextlib.contextmanager
+def playwright_context_manager(playwright_module_scope):
+    try:
+        playwright_module_scope.clean_logs()
+        yield playwright_module_scope
+    finally:
+        print(playwright_module_scope.logs)
+
+
+@pytest.fixture
+def playwright(request, playwright_module_scope):
+    with playwright_context_manager(playwright_module_scope) as playwright:
+        with set_webdriver_script_timeout(
+            playwright, script_timeout=parse_driver_timeout(request)
+        ):
+            yield playwright
+
+
 @contextlib.contextmanager
 def playwright_noload_common(request, playwright_browsers, web_server_main):
     # Avoid loading the fixture if the test is going to be skipped
@@ -1034,7 +1062,7 @@ def playwright_noload_common(request, playwright_browsers, web_server_main):
         request, playwright_browsers, web_server_main, load_pyodide=False
     ) as playwright:
         with set_webdriver_script_timeout(
-            selenium, script_timeout=parse_driver_timeout(request)
+            playwright, script_timeout=parse_driver_timeout(request)
         ):
             try:
                 yield playwright
@@ -1067,7 +1095,7 @@ def playwright_noload(request, playwright_browsers, web_server_main):
 
 if os.environ.get("PLAYWRIGHT"):
     selenium = playwright
-    selenium_standalone = playwright
+    selenium_standalone = playwright_standalone
     selenium_standalone_noload_common = playwright_noload_common
     selenium_webworker_standalone = playwright_webworker
     selenium_standalone_noload = playwright_noload
