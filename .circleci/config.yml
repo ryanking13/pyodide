@@ -247,6 +247,12 @@ jobs:
     steps:
       - attach_workspace:
           at: .
+      - run: # TODO: move playwright installation to docker image
+          name: install playwright and browsers
+          command: |
+            pip install playwright
+            playwright install
+            echo 'export PLAYWRIGHT="1"' >> $BASH_ENV
       - run:
           name: test
           command: |
