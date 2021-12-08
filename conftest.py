@@ -16,6 +16,7 @@ import sys
 import shutil
 
 import pytest
+from playwright.sync_api import sync_playwright
 
 ROOT_PATH = pathlib.Path(__file__).parents[0].resolve()
 TEST_PATH = ROOT_PATH / "src" / "tests"
@@ -725,6 +726,352 @@ def run_web_server(q, log_filepath, build_dir):
 
         httpd.service_actions = service_actions
         httpd.serve_forever()
+
+
+########################################################################################################################################
+
+
+@pytest.fixture(scope="session")
+def playwright_browsers():
+    with sync_playwright() as p:
+        chromium = p.chromium.launch(
+            args=["--js-flags=--expose-gc"],
+        )
+        firefox = p.firefox.launch()
+        webkit = None
+        yield {
+            "chrome": chromium,
+            "firefox": firefox,
+            "webkit": webkit,
+        }
+
+
+class PlaywrightWrapper:
+    browser = None
+    JavascriptException = JavascriptException
+    SETUP_CODE = pathlib.Path(ROOT_PATH / "tools/testsetup.js").read_text()
+
+    def __init__(
+        self,
+        browsers,
+        server_port,
+        server_hostname="127.0.0.1",
+        server_log=None,
+        load_pyodide=True,
+        script_timeout=20000,
+    ):
+        self.browsers = browsers
+        self.server_port = server_port
+        self.server_hostname = server_hostname
+        self.base_url = f"http://{self.server_hostname}:{self.server_port}"
+        self.server_log = server_log
+
+        self.runner = self.get_runner()
+        self.set_script_timeout(script_timeout)
+        self.script_timeout = script_timeout
+        self.prepare()
+        self.javascript_setup()
+        if load_pyodide:
+            self.run_js(
+                """
+                let pyodide = await loadPyodide({ indexURL : './', fullStdLib: false, jsglobals : self });
+                self.pyodide = pyodide;
+                globalThis.pyodide = pyodide;
+                pyodide._module.inTestHoist = true; // improve some error messages for tests
+                pyodide.globals.get;
+                pyodide.pyodide_py.eval_code;
+                pyodide.pyodide_py.eval_code_async;
+                pyodide.pyodide_py.register_js_module;
+                pyodide.pyodide_py.unregister_js_module;
+                pyodide.pyodide_py.find_imports;
+                pyodide._module.importlib.invalidate_caches;
+                pyodide.runPython("");
+                """,
+            )
+            self.save_state()
+            self.restore_state()
+
+    def get_runner(self):
+        self._browser = self.browsers[self.browser]
+        self._context = self._browser.new_context()
+        return self._context.new_page()
+
+    def collect_garbage(self):
+        client = self.runner.context.new_cdp_session(self.runner)
+        client.send("HeapProfiler.collectGarbage")
+
+    def prepare(self):
+        self.runner.goto(f"{self.base_url}/test.html")
+
+    def set_script_timeout(self, timeout):
+        self.runner.set_default_timeout(timeout)
+
+    def quit(self):
+        self.runner.close()
+        self._context.close()
+
+    def refresh(self):
+        self.runner.reload()
+        self.javascript_setup()
+
+    def javascript_setup(self):
+        self.run_js(
+            self.SETUP_CODE,
+            pyodide_checks=False,
+        )
+
+    @property
+    def pyodide_loaded(self):
+        return self.run_js("return !!(self.pyodide && self.pyodide.runPython);")
+
+    @property
+    def logs(self):
+        logs = self.run_js("return self.logs;", pyodide_checks=False)
+        if logs is not None:
+            return "\n".join(str(x) for x in logs)
+        return ""
+
+    def clean_logs(self):
+        self.run_js("self.logs = []", pyodide_checks=False)
+
+    def run(self, code):
+        return self.run_js(
+            f"""
+            let result = pyodide.runPython({code!r});
+            if(result && result.toJs){{
+                let converted_result = result.toJs();
+                if(pyodide.isPyProxy(converted_result)){{
+                    converted_result = undefined;
+                }}
+                result.destroy();
+                return converted_result;
+            }}
+            return result;
+            """
+        )
+
+    def run_async(self, code):
+        return self.run_js(
+            f"""
+            await pyodide.loadPackagesFromImports({code!r})
+            let result = await pyodide.runPythonAsync({code!r});
+            if(result && result.toJs){{
+                let converted_result = result.toJs();
+                if(pyodide.isPyProxy(converted_result)){{
+                    converted_result = undefined;
+                }}
+                result.destroy();
+                return converted_result;
+            }}
+            return result;
+            """
+        )
+
+    def run_js(self, code, pyodide_checks=True):
+        """Run JavaScript code and check for pyodide errors"""
+        if isinstance(code, str) and code.startswith("\n"):
+            # we have a multiline string, fix indentation
+            code = textwrap.dedent(code)
+
+        if pyodide_checks:
+            check_code = """
+                    if(globalThis.pyodide && pyodide._module && pyodide._module._PyErr_Occurred()){
+                        try {
+                            pyodide._module._pythonexc2js();
+                        } catch(e){
+                            console.error(`Python exited with error flag set! Error was:\n${e.message}`);
+                            // Don't put original error message in new one: we want
+                            // "pytest.raises(xxx, match=msg)" to fail
+                            throw new Error(`Python exited with error flag set!`);
+                        }
+                    }
+           """
+        else:
+            check_code = ""
+        return self.run_js_inner(code, check_code)
+
+    def run_js_inner(self, code, check_code):
+        # playwright `evaluate` waits until primise to resolve,
+        # so we don't need to use a callback like selenium.
+        wrapper = """
+            let run = async () => { %s }
+            (async () => {
+                try {
+                    let result = await run();
+                    %s
+                    return [0, result];
+                } catch (e) {
+                    return [1, e.toString(), e.stack];
+                }
+            })()
+        """
+        retval = self.runner.evaluate(wrapper % (code, check_code))
+        if retval[0] == 0:
+            return retval[1]
+        else:
+            raise JavascriptException(retval[1], retval[2])
+
+    def get_num_hiwire_keys(self):
+        return self.run_js("return pyodide._module.hiwire.num_keys();")
+
+    @property
+    def force_test_fail(self) -> bool:
+        return self.run_js("return !!pyodide._module.fail_test;")
+
+    def clear_force_test_fail(self):
+        self.run_js("pyodide._module.fail_test = false;")
+
+    def save_state(self):
+        self.run_js("self.__savedState = pyodide._module.saveState();")
+
+    def restore_state(self):
+        self.run_js(
+            """
+            if(self.__savedState){
+                pyodide._module.restoreState(self.__savedState)
+            }
+            """
+        )
+
+    def get_num_proxies(self):
+        return self.run_js("return pyodide._module.pyproxy_alloc_map.size")
+
+    def enable_pyproxy_tracing(self):
+        self.run_js("pyodide._module.enable_pyproxy_allocation_tracing()")
+
+    def disable_pyproxy_tracing(self):
+        self.run_js("pyodide._module.disable_pyproxy_allocation_tracing()")
+
+    def run_webworker(self, code):
+        if isinstance(code, str) and code.startswith("\n"):
+            # we have a multiline string, fix indentation
+            code = textwrap.dedent(code)
+
+        return self.run_js(
+            """
+            let worker = new Worker( '{}' );
+            let res = new Promise((res, rej) => {{
+                worker.onerror = e => rej(e);
+                worker.onmessage = e => {{
+                    if (e.data.results) {{
+                       res(e.data.results);
+                    }} else {{
+                       rej(e.data.error);
+                    }}
+                }};
+                worker.postMessage({{ python: {!r} }});
+            }});
+            return await res
+            """.format(
+                f"http://{self.server_hostname}:{self.server_port}/webworker_dev.js",
+                code,
+            ),
+            pyodide_checks=False,
+        )
+
+    def load_package(self, packages):
+        self.run_js("await pyodide.loadPackage({!r})".format(packages))
+
+
+class ChromePlaywrightWrapper(PlaywrightWrapper):
+    browser = "chrome"
+
+
+class FirefoxPlaywrightWrapper(PlaywrightWrapper):
+    browser = "firefox"
+
+
+@contextlib.contextmanager
+def playwright_common(request, playwright_browsers, web_server_main, load_pyodide=True):
+    """Returns an initialized playwright page object"""
+
+    server_hostname, server_port, server_log = web_server_main
+    if request.param == "firefox":
+        cls = FirefoxPlaywrightWrapper
+    elif request.param == "chrome":
+        cls = ChromePlaywrightWrapper
+    elif request.param == "node":
+        # FIXME
+        assert False
+    else:
+        assert False
+
+    playwright = cls(
+        browsers=playwright_browsers,
+        server_port=server_port,
+        server_hostname=server_hostname,
+        server_log=server_log,
+        load_pyodide=load_pyodide,
+    )
+
+    try:
+        yield playwright
+    finally:
+        playwright.quit()
+
+
+@pytest.fixture(params=["firefox", "chrome"], scope="function")
+def playwright(request, playwright_browsers, web_server_main):
+    # Avoid loading the fixture if the test is going to be skipped
+    _maybe_skip_test(request.node)
+
+    with playwright_common(request, playwright_browsers, web_server_main) as playwright:
+        with set_webdriver_script_timeout(
+            selenium, script_timeout=parse_driver_timeout(request)
+        ):
+            try:
+                yield playwright
+            finally:
+                print(playwright.logs)
+
+
+@contextlib.contextmanager
+def playwright_noload_common(request, playwright_browsers, web_server_main):
+    # Avoid loading the fixture if the test is going to be skipped
+    _maybe_skip_test(request.node)
+
+    with playwright_common(
+        request, playwright_browsers, web_server_main, load_pyodide=False
+    ) as playwright:
+        with set_webdriver_script_timeout(
+            selenium, script_timeout=parse_driver_timeout(request)
+        ):
+            try:
+                yield playwright
+            finally:
+                print(playwright.logs)
+
+
+@pytest.fixture(params=["firefox", "chrome"], scope="function")
+def playwright_webworker(request, playwright_browsers, web_server_main):
+    # Avoid loading the fixture if the test is going to be skipped
+    _maybe_skip_test(request.node)
+
+    with playwright_noload_common(
+        request, playwright_browsers, web_server_main
+    ) as playwright:
+        yield playwright
+
+
+@pytest.fixture(params=["firefox", "chrome"], scope="function")
+def playwright_noload(request, playwright_browsers, web_server_main):
+    """Only difference between this and `playwright` fixture is that this also tests on node."""
+    # Avoid loading the fixture if the test is going to be skipped
+    _maybe_skip_test(request.node)
+
+    with playwright_noload_common(
+        request, playwright_browsers, web_server_main
+    ) as playwright:
+        yield playwright
+
+
+if os.environ.get("PLAYWRIGHT"):
+    selenium = playwright
+    selenium_standalone = playwright
+    selenium_standalone_noload_common = playwright_noload_common
+    selenium_webworker_standalone = playwright_webworker
+    selenium_standalone_noload = playwright_noload
+    selenium_standalone_noload = playwright_noload
 
 
 if (
