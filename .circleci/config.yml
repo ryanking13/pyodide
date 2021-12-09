@@ -3,7 +3,7 @@ version: 2.1
 defaults: &defaults
   working_directory: ~/repo
   docker:
-    - image: pyodide/pyodide-env:19
+    - image: sihadan/pyodide-env:19
   environment:
     - EMSDK_NUM_CORES: 3
       EMCC_CORES: 3
@@ -11,6 +11,7 @@ defaults: &defaults
       # Make sure the ccache dir is consistent between core and package builds
       # (it's not the case otherwise)
       CCACHE_DIR: /root/.ccache/
+      PLAYWRIGHT: true
 
 jobs:
   lint:
@@ -247,12 +248,6 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - run: # TODO: move playwright installation to docker image
-          name: install playwright and browsers
-          command: |
-            pip install playwright
-            playwright install
-            echo 'export PLAYWRIGHT="1"' >> $BASH_ENV
       - run:
           name: test
           command: |
