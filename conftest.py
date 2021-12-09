@@ -630,6 +630,19 @@ def selenium(request, selenium_module_scope):
             yield selenium
 
 
+@pytest.fixture(params=["firefox", "chrome"], scope="function")
+def console_html_fixture(request, web_server_main):
+    with selenium_common(request, web_server_main, False) as selenium:
+        selenium.driver.get(
+            f"http://{selenium.server_hostname}:{selenium.server_port}/console.html"
+        )
+        selenium.javascript_setup()
+        try:
+            yield selenium
+        finally:
+            print(selenium.logs)
+
+
 @pytest.fixture(scope="session")
 def web_server_main(request):
     """Web server that serves files in the build/ directory"""
@@ -637,14 +650,14 @@ def web_server_main(request):
         yield output
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def web_server_secondary(request):
     """Secondary web server that serves files build/ directory"""
     with spawn_web_server(request.config.option.build_dir) as output:
         yield output
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def web_server_tst_data(request):
     """Web server that serves files in the src/tests/data/ directory"""
     with spawn_web_server(TEST_PATH / "data") as output:
@@ -728,22 +741,46 @@ def run_web_server(q, log_filepath, build_dir):
         httpd.serve_forever()
 
 
-########################################################################################################################################
+########################################################################################
+#################################### PLAYWRIGHT ########################################
+########################################################################################
 
 
 @pytest.fixture(scope="session")
-def playwright_browsers():
-    with sync_playwright() as p:
-        chromium = p.chromium.launch(
-            args=["--js-flags=--expose-gc"],
-        )
-        firefox = p.firefox.launch()
-        webkit = None
-        yield {
-            "chrome": chromium,
-            "firefox": firefox,
-            "webkit": webkit,
-        }
+def playwright_browsers(request):
+    p = sync_playwright().start()
+
+    chromium = p.chromium.launch(
+        args=["--js-flags=--expose-gc"],
+    )
+    firefox = p.firefox.launch()
+    webkit = None
+
+    def teardown():
+        chromium.close()
+        firefox.close()
+        # webkit.close()
+        p.stop()
+
+    request.addfinalizer(teardown)
+
+    return {
+        "chrome": chromium,
+        "firefox": firefox,
+        "webkit": webkit,
+    }
+
+    # with sync_playwright() as p:
+    #     chromium = p.chromium.launch(
+    #         args=["--js-flags=--expose-gc"],
+    #     )
+    #     firefox = p.firefox.launch()
+    #     webkit = None
+    #     yield {
+    #         "chrome": chromium,
+    #         "firefox": firefox,
+    #         "webkit": webkit,
+    #     }
 
 
 class PlaywrightWrapper:
@@ -1091,6 +1128,19 @@ def playwright_noload(request, playwright_browsers, web_server_main):
         request, playwright_browsers, web_server_main
     ) as playwright:
         yield playwright
+
+
+@pytest.fixture(params=["firefox", "chrome"], scope="function")
+def playwright_console_html_fixture(request, playwright_browsers, web_server_main):
+    with playwright_common(request, playwright_browsers, web_server_main, False) as playwright:
+        playwright.driver.goto(
+            f"http://{playwright.server_hostname}:{playwright.server_port}/console.html"
+        )
+        playwright.javascript_setup()
+        try:
+            yield playwright
+        finally:
+            print(playwright.logs)
 
 
 if os.environ.get("PLAYWRIGHT"):
