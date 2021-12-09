@@ -1017,7 +1017,7 @@ def playwright_standalone(request, playwright_browsers, web_server_main):
 
     with playwright_common(request, playwright_browsers, web_server_main) as playwright:
         with set_webdriver_script_timeout(
-            selenium, script_timeout=parse_driver_timeout(request)
+            playwright, script_timeout=parse_driver_timeout(request)
         ):
             try:
                 yield playwright
