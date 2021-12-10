@@ -748,39 +748,21 @@ def run_web_server(q, log_filepath, build_dir):
 
 @pytest.fixture(scope="session")
 def playwright_browsers(request):
-    p = sync_playwright().start()
-
-    chromium = p.chromium.launch(
-        args=["--js-flags=--expose-gc"],
-    )
-    firefox = p.firefox.launch()
-    webkit = None
-
-    def teardown():
-        chromium.close()
-        firefox.close()
-        # webkit.close()
-        p.stop()
-
-    request.addfinalizer(teardown)
-
-    return {
-        "chrome": chromium,
-        "firefox": firefox,
-        "webkit": webkit,
-    }
-
-    # with sync_playwright() as p:
-    #     chromium = p.chromium.launch(
-    #         args=["--js-flags=--expose-gc"],
-    #     )
-    #     firefox = p.firefox.launch()
-    #     webkit = None
-    #     yield {
-    #         "chrome": chromium,
-    #         "firefox": firefox,
-    #         "webkit": webkit,
-    #     }
+    with sync_playwright() as p:
+        chromium = p.chromium.launch(
+            args=["--js-flags=--expose-gc"],
+        )
+        firefox = p.firefox.launch()
+        webkit = None
+        try:
+            yield {
+                "chrome": chromium,
+                "firefox": firefox,
+                # "webkit": webkit,
+            }
+        finally:
+            chromium.close()
+            firefox.close()
 
 
 class PlaywrightWrapper:
