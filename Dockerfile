@@ -15,7 +15,9 @@ RUN apt-get update \
 ADD docs/requirements-doc.txt requirements.txt /
 
 RUN pip3 --no-cache-dir install -r /requirements.txt \
-  && pip3 --no-cache-dir install -r /requirements-doc.txt
+  && pip3 --no-cache-dir install -r /requirements-doc.txt \
+  && pip3 install playwright \
+  && python -m playwright install
 
 # Get firefox 70.0.1 and geckodriver
 RUN wget -qO- https://ftp.mozilla.org/pub/firefox/releases/87.0/linux-x86_64/en-US/firefox-87.0.tar.bz2 | tar jx \
