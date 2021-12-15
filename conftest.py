@@ -896,10 +896,6 @@ class PlaywrightWrapper:
 
         return self.browsers[self.browser].new_page()
 
-    def collect_garbage(self):
-        client = self.driver.context.new_cdp_session(self.driver)
-        client.send("HeapProfiler.collectGarbage")
-
     def prepare(self):
         self.driver.goto(f"{self.base_url}/test.html")
 
@@ -1074,6 +1070,10 @@ class PlaywrightWrapper:
 
 class ChromePlaywrightWrapper(PlaywrightWrapper):
     browser = "chrome"
+
+    def collect_garbage(self):
+        client = self.driver.context.new_cdp_session(self.driver)
+        client.send("HeapProfiler.collectGarbage")
 
 
 class FirefoxPlaywrightWrapper(PlaywrightWrapper):
