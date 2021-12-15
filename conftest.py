@@ -18,10 +18,6 @@ import shutil
 import pytest
 from playwright.sync_api import sync_playwright
 
-###
-import time
-
-###
 
 ROOT_PATH = pathlib.Path(__file__).parents[0].resolve()
 TEST_PATH = ROOT_PATH / "src" / "tests"
@@ -807,7 +803,6 @@ class PlaywrightWrapper:
         self.prepare()
         self.javascript_setup()
         if load_pyodide:
-            st = time.time()
             if prototype is not None and not os.environ.get("NO_CACHE_MODULE"):
                 self.run_js(
                     """
@@ -870,8 +865,6 @@ class PlaywrightWrapper:
                 pyodide.runPython("");
                 """,
             )
-            ed = time.time()
-            print(f"Load time: {ed-st}")
             self.save_state()
             self.restore_state()
 
