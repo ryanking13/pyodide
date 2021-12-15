@@ -801,7 +801,7 @@ class PlaywrightWrapper:
         self.browsers = browsers
         self.prototype = prototype
 
-        self.runner = self.get_runner()
+        self.driver = self.get_driver()
         self.set_script_timeout(script_timeout)
         self.script_timeout = script_timeout
         self.prepare()
@@ -876,8 +876,8 @@ class PlaywrightWrapper:
             self.restore_state()
 
     def popup(self):
-        with self.runner.expect_popup() as popup_info:
-            self.runner.evaluate(
+        with self.driver.expect_popup() as popup_info:
+            self.driver.evaluate(
                 """
                 function(url) {
                     new_window = open(url, "", "popup");
@@ -885,39 +885,39 @@ class PlaywrightWrapper:
                     return new_window;
                 }
                 """,
-                self.runner.url,
+                self.driver.url,
             )
         popup = popup_info.value
         return popup
 
     def post_module(self):
-        self.runner.evaluate(
+        self.driver.evaluate(
             """
             globalThis.targetWindow.postMessage(globalThis.cachedModule);
             """
         )
 
-    def get_runner(self):
+    def get_driver(self):
         if self.prototype is not None:
             return self.prototype[self.browser].popup()
 
         return self.browsers[self.browser].new_page()
 
     def collect_garbage(self):
-        client = self.runner.context.new_cdp_session(self.runner)
+        client = self.driver.context.new_cdp_session(self.driver)
         client.send("HeapProfiler.collectGarbage")
 
     def prepare(self):
-        self.runner.goto(f"{self.base_url}/test.html")
+        self.driver.goto(f"{self.base_url}/test.html")
 
     def set_script_timeout(self, timeout):
-        self.runner.set_default_timeout(timeout)
+        self.driver.set_default_timeout(timeout)
 
     def quit(self):
-        self.runner.close()
+        self.driver.close()
 
     def refresh(self):
-        self.runner.reload()
+        self.driver.reload()
         self.javascript_setup()
 
     def javascript_setup(self):
@@ -1011,7 +1011,7 @@ class PlaywrightWrapper:
                 }
             })()
         """
-        retval = self.runner.evaluate(wrapper % (code, check_code))
+        retval = self.driver.evaluate(wrapper % (code, check_code))
         if retval[0] == 0:
             return retval[1]
         else:
