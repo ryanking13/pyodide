@@ -1158,7 +1158,7 @@ def playwright_standalone(
 # playwright instance cached at the module level
 @pytest.fixture(params=["firefox", "chrome"], scope="module")
 def playwright_module_scope(request, playwright_browsers, web_server_main):
-    with playwright_common(request, playwright_browsers, web_server_main) as playwright:
+    with playwright_common(request.param, playwright_browsers, web_server_main) as playwright:
         yield playwright
 
 
@@ -1189,7 +1189,7 @@ def playwright_noload_common(request, playwright_browsers, web_server_main):
     _maybe_skip_test(request.node)
 
     with playwright_common(
-        request, playwright_browsers, web_server_main, load_pyodide=False
+        request.param, playwright_browsers, web_server_main, load_pyodide=False
     ) as playwright:
         with set_webdriver_script_timeout(
             playwright, script_timeout=parse_driver_timeout(request)
@@ -1226,7 +1226,7 @@ def playwright_noload(request, playwright_browsers, web_server_main):
 @pytest.fixture(params=["firefox", "chrome"], scope="function")
 def playwright_console_html_fixture(request, playwright_browsers, web_server_main):
     with playwright_common(
-        request, playwright_browsers, web_server_main, False
+        request.param, playwright_browsers, web_server_main, False
     ) as playwright:
         playwright.driver.goto(
             f"http://{playwright.server_hostname}:{playwright.server_port}/console.html"
