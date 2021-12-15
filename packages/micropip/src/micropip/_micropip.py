@@ -21,6 +21,7 @@ from .package import PackageDict, PackageMetadata
 
 from pyodide import IN_BROWSER, to_js
 
+# fmt: off
 # Provide stubs for testing in native python
 if IN_BROWSER:
     import pyodide_js
@@ -49,7 +50,6 @@ else:
         def to_py():
             return {}
 
-
 if IN_BROWSER:
     from pyodide.http import pyfetch
 
@@ -59,7 +59,6 @@ if IN_BROWSER:
     async def fetch_string(url: str, **kwargs) -> str:
         return await (await pyfetch(url, **kwargs)).string()
 
-
 else:
     from urllib.request import urlopen, Request
 
@@ -68,7 +67,6 @@ else:
 
     async def fetch_string(url: str, **kwargs) -> str:
         return (await fetch_bytes(url, **kwargs)).decode()
-
 
 if IN_BROWSER:
     from asyncio import gather
@@ -82,6 +80,7 @@ else:
         for coroutine in coroutines:
             result.append(await coroutine)
         return result
+# fmt: on
 
 
 async def _get_pypi_json(pkgname):
