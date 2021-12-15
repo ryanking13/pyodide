@@ -1158,7 +1158,9 @@ def playwright_standalone(
 # playwright instance cached at the module level
 @pytest.fixture(params=["firefox", "chrome"], scope="module")
 def playwright_module_scope(request, playwright_browsers, web_server_main):
-    with playwright_common(request.param, playwright_browsers, web_server_main) as playwright:
+    with playwright_common(
+        request.param, playwright_browsers, web_server_main
+    ) as playwright:
         yield playwright
 
 
