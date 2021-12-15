@@ -18,6 +18,11 @@ import shutil
 import pytest
 from playwright.sync_api import sync_playwright
 
+###
+import time
+
+###
+
 ROOT_PATH = pathlib.Path(__file__).parents[0].resolve()
 TEST_PATH = ROOT_PATH / "src" / "tests"
 BUILD_PATH = ROOT_PATH / "build"
@@ -751,9 +756,16 @@ def run_web_server(q, log_filepath, build_dir):
 @pytest.fixture(scope="session")
 def playwright_browsers(request):
     with sync_playwright() as p:
+        # chromium = p.chromium.launch(
+        #     args=[
+        #         "--js-flags=--expose-gc",
+        #     ],
+        # )
         chromium = p.chromium.launch(
-            args=["--js-flags=--expose-gc"],
-        )
+            args=[
+                "--js-flags=--expose-gc",
+            ],
+        ).new_context()
         firefox = p.firefox.launch()
         webkit = None
         try:
@@ -774,18 +786,20 @@ class PlaywrightWrapper:
 
     def __init__(
         self,
-        browsers,
         server_port,
         server_hostname="127.0.0.1",
         server_log=None,
         load_pyodide=True,
+        browsers=None,
+        prototype=None,
         script_timeout=20000,
     ):
-        self.browsers = browsers
         self.server_port = server_port
         self.server_hostname = server_hostname
         self.base_url = f"http://{self.server_hostname}:{self.server_port}"
         self.server_log = server_log
+        self.browsers = browsers
+        self.prototype = prototype
 
         self.runner = self.get_runner()
         self.set_script_timeout(script_timeout)
@@ -793,8 +807,53 @@ class PlaywrightWrapper:
         self.prepare()
         self.javascript_setup()
         if load_pyodide:
+            st = time.time()
+            if prototype is not None and not os.environ.get("NO_CACHE_MODULE"):
+                self.run_js(
+                    """
+                    globalThis.module = (function() {
+                        return new Promise(function(resolve) {
+                            globalThis.onmessage = function(e) {
+                                if (!e) {
+                                    resolve();
+                                }
+                                resolve(e.data);
+                            };
+                        });
+                    })();
+                    """
+                )
+
+                self.prototype[self.browser].post_module()
+
+                self.run_js(
+                    """
+                    globalThis.cachedModule = await globalThis.module;
+                    """
+                )
+
             self.run_js(
                 """
+                const instantiateStreaming = WebAssembly.instantiateStreaming;
+                WebAssembly.instantiateStreaming = function(response, info) {
+                    if (globalThis.cachedModule) {
+                        return WebAssembly.instantiate(globalThis.cachedModule, info).then(function(instance) {
+                            return {
+                                instance: instance,
+                                module: globalThis.cachedModule,
+                            }
+                        });
+                    } else {
+                        return instantiateStreaming(response, info).then(function(output) {
+                            globalThis.cachedModule = output.module;
+                            return output;
+                        });
+                    }
+                }
+                """
+            )
+            self.run_js(
+                """ 
                 let pyodide = await loadPyodide({ indexURL : './', fullStdLib: false, jsglobals : self });
                 self.pyodide = pyodide;
                 globalThis.pyodide = pyodide;
@@ -805,17 +864,44 @@ class PlaywrightWrapper:
                 pyodide.pyodide_py.register_js_module;
                 pyodide.pyodide_py.unregister_js_module;
                 pyodide.pyodide_py.find_imports;
+                pyodide._module._util_module = pyodide.pyimport("pyodide._util");
+                pyodide._module._util_module.unpack_buffer_archive;
                 pyodide._module.importlib.invalidate_caches;
                 pyodide.runPython("");
                 """,
             )
+            ed = time.time()
+            print(f"Load time: {ed-st}")
             self.save_state()
             self.restore_state()
 
+    def popup(self):
+        with self.runner.expect_popup() as popup_info:
+            self.runner.evaluate(
+                """
+                function(url) {
+                    new_window = open(url, "", "popup");
+                    globalThis.targetWindow = new_window;
+                    return new_window;
+                }
+                """,
+                self.runner.url,
+            )
+        popup = popup_info.value
+        return popup
+
+    def post_module(self):
+        self.runner.evaluate(
+            """
+            globalThis.targetWindow.postMessage(globalThis.cachedModule);
+            """
+        )
+
     def get_runner(self):
-        self._browser = self.browsers[self.browser]
-        self._context = self._browser.new_context()
-        return self._context.new_page()
+        if self.prototype is not None:
+            return self.prototype[self.browser].popup()
+
+        return self.browsers[self.browser].new_page()
 
     def collect_garbage(self):
         client = self.runner.context.new_cdp_session(self.runner)
@@ -829,7 +915,6 @@ class PlaywrightWrapper:
 
     def quit(self):
         self.runner.close()
-        self._context.close()
 
     def refresh(self):
         self.runner.reload()
@@ -1003,15 +1088,21 @@ class FirefoxPlaywrightWrapper(PlaywrightWrapper):
 
 
 @contextlib.contextmanager
-def playwright_common(request, playwright_browsers, web_server_main, load_pyodide=True):
+def playwright_common(
+    browser,
+    playwright_browsers,
+    web_server_main,
+    playwright_prototype=None,
+    load_pyodide=True,
+):
     """Returns an initialized playwright page object"""
 
     server_hostname, server_port, server_log = web_server_main
-    if request.param == "firefox":
+    if browser == "firefox":
         cls = FirefoxPlaywrightWrapper
-    elif request.param == "chrome":
+    elif browser == "chrome":
         cls = ChromePlaywrightWrapper
-    elif request.param == "node":
+    elif browser == "node":
         # FIXME
         assert False
     else:
@@ -1019,6 +1110,7 @@ def playwright_common(request, playwright_browsers, web_server_main, load_pyodid
 
     playwright = cls(
         browsers=playwright_browsers,
+        prototype=playwright_prototype,
         server_port=server_port,
         server_hostname=server_hostname,
         server_log=server_log,
@@ -1031,12 +1123,29 @@ def playwright_common(request, playwright_browsers, web_server_main, load_pyodid
         playwright.quit()
 
 
+@pytest.fixture(scope="session")
+def playwright_prototype(request, playwright_browsers, web_server_main):
+    with playwright_common(
+        "firefox", playwright_browsers, web_server_main, playwright_prototype=None
+    ) as playwright_firefox, playwright_common(
+        "chrome", playwright_browsers, web_server_main, playwright_prototype=None
+    ) as playwright_chrome:
+        yield {
+            "firefox": playwright_firefox,
+            "chrome": playwright_chrome,
+        }
+
+
 @pytest.fixture(params=["firefox", "chrome"], scope="function")
-def playwright_standalone(request, playwright_browsers, web_server_main):
+def playwright_standalone(
+    request, playwright_prototype, playwright_browsers, web_server_main
+):
     # Avoid loading the fixture if the test is going to be skipped
     _maybe_skip_test(request.node)
 
-    with playwright_common(request, playwright_browsers, web_server_main) as playwright:
+    with playwright_common(
+        request.param, playwright_browsers, web_server_main, playwright_prototype
+    ) as playwright:
         with set_webdriver_script_timeout(
             playwright, script_timeout=parse_driver_timeout(request)
         ):
@@ -1116,7 +1225,9 @@ def playwright_noload(request, playwright_browsers, web_server_main):
 
 @pytest.fixture(params=["firefox", "chrome"], scope="function")
 def playwright_console_html_fixture(request, playwright_browsers, web_server_main):
-    with playwright_common(request, playwright_browsers, web_server_main, False) as playwright:
+    with playwright_common(
+        request, playwright_browsers, web_server_main, False
+    ) as playwright:
         playwright.driver.goto(
             f"http://{playwright.server_hostname}:{playwright.server_port}/console.html"
         )
