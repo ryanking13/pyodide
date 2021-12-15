@@ -780,7 +780,7 @@ def playwright_browsers(request):
 
 
 class PlaywrightWrapper:
-    browser = None
+    browser = ""
     JavascriptException = JavascriptException
     SETUP_CODE = pathlib.Path(ROOT_PATH / "tools/testsetup.js").read_text()
 
@@ -1241,12 +1241,12 @@ def playwright_console_html_fixture(request, playwright_browsers, web_server_mai
 
 
 if os.environ.get("PLAYWRIGHT"):
-    selenium = playwright
-    selenium_standalone = playwright_standalone
-    selenium_standalone_noload_common = playwright_noload_common
-    selenium_webworker_standalone = playwright_webworker
-    selenium_standalone_noload = playwright_noload
-    selenium_standalone_noload = playwright_noload
+    selenium = playwright  # type: ignore
+    selenium_standalone = playwright_standalone  # type: ignore
+    selenium_standalone_noload_common = playwright_noload_common  # type: ignore
+    selenium_webworker_standalone = playwright_webworker  # type: ignore
+    selenium_standalone_noload = playwright_noload  # type: ignore
+    selenium_standalone_noload = playwright_noload  # type: ignore
 
 
 if (
