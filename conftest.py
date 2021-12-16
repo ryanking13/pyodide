@@ -798,7 +798,7 @@ class PlaywrightWrapper:
         self.prepare()
         self.javascript_setup()
         if load_pyodide:
-            if prototype is not None and not os.environ.get("NO_CACHE_MODULE"):
+            if prototype is not None and os.environ.get("CACHE_MODULE"):
                 self.run_js(
                     """
                     globalThis.module = (function() {
@@ -886,7 +886,7 @@ class PlaywrightWrapper:
         )
 
     def get_driver(self):
-        if self.prototype is not None:
+        if self.prototype is not None and os.environ.get("CACHE_MODULE"):
             return self.prototype[self.browser].popup()
 
         return self.browsers[self.browser].new_page()
