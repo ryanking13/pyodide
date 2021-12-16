@@ -752,17 +752,12 @@ def run_web_server(q, log_filepath, build_dir):
 @pytest.fixture(scope="session")
 def playwright_browsers(request):
     with sync_playwright() as p:
-        # chromium = p.chromium.launch(
-        #     args=[
-        #         "--js-flags=--expose-gc",
-        #     ],
-        # )
         chromium = p.chromium.launch(
             args=[
                 "--js-flags=--expose-gc",
             ],
         ).new_context()
-        firefox = p.firefox.launch()
+        firefox = p.firefox.launch().new_context()
         webkit = None
         try:
             yield {
@@ -832,6 +827,7 @@ class PlaywrightWrapper:
                 const instantiateStreaming = WebAssembly.instantiateStreaming;
                 WebAssembly.instantiateStreaming = function(response, info) {
                     if (globalThis.cachedModule) {
+                        console.log("Got cached module");
                         return WebAssembly.instantiate(globalThis.cachedModule, info).then(function(instance) {
                             return {
                                 instance: instance,
@@ -839,6 +835,7 @@ class PlaywrightWrapper:
                             }
                         });
                     } else {
+                        console.log("No cached module");
                         return instantiateStreaming(response, info).then(function(output) {
                             globalThis.cachedModule = output.module;
                             return output;
