@@ -827,7 +827,6 @@ class PlaywrightWrapper:
                 const instantiateStreaming = WebAssembly.instantiateStreaming;
                 WebAssembly.instantiateStreaming = function(response, info) {
                     if (globalThis.cachedModule) {
-                        console.log("Got cached module");
                         return WebAssembly.instantiate(globalThis.cachedModule, info).then(function(instance) {
                             return {
                                 instance: instance,
@@ -835,7 +834,6 @@ class PlaywrightWrapper:
                             }
                         });
                     } else {
-                        console.log("No cached module");
                         return instantiateStreaming(response, info).then(function(output) {
                             globalThis.cachedModule = output.module;
                             return output;
