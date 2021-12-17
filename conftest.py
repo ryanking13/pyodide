@@ -782,7 +782,6 @@ class PlaywrightWrapper:
         server_log=None,
         load_pyodide=True,
         browsers=None,
-        prototype=None,
         script_timeout=20000,
     ):
         self.server_port = server_port
@@ -790,7 +789,6 @@ class PlaywrightWrapper:
         self.base_url = f"http://{self.server_hostname}:{self.server_port}"
         self.server_log = server_log
         self.browsers = browsers
-        self.prototype = prototype
 
         self.driver = self.get_driver()
         self.set_script_timeout(script_timeout)
@@ -798,50 +796,6 @@ class PlaywrightWrapper:
         self.prepare()
         self.javascript_setup()
         if load_pyodide:
-            if prototype is not None and os.environ.get("CACHE_MODULE"):
-                self.run_js(
-                    """
-                    globalThis.module = (function() {
-                        return new Promise(function(resolve) {
-                            globalThis.onmessage = function(e) {
-                                if (!e) {
-                                    resolve();
-                                }
-                                resolve(e.data);
-                            };
-                        });
-                    })();
-                    """
-                )
-
-                self.prototype[self.browser].post_module()
-
-                self.run_js(
-                    """
-                    globalThis.cachedModule = await globalThis.module;
-                    """
-                )
-
-            self.run_js(
-                """
-                const instantiateStreaming = WebAssembly.instantiateStreaming;
-                WebAssembly.instantiateStreaming = function(response, info) {
-                    if (globalThis.cachedModule) {
-                        return WebAssembly.instantiate(globalThis.cachedModule, info).then(function(instance) {
-                            return {
-                                instance: instance,
-                                module: globalThis.cachedModule,
-                            }
-                        });
-                    } else {
-                        return instantiateStreaming(response, info).then(function(output) {
-                            globalThis.cachedModule = output.module;
-                            return output;
-                        });
-                    }
-                }
-                """
-            )
             self.run_js(
                 """ 
                 let pyodide = await loadPyodide({ indexURL : './', fullStdLib: false, jsglobals : self });
@@ -863,32 +817,7 @@ class PlaywrightWrapper:
             self.save_state()
             self.restore_state()
 
-    def popup(self):
-        with self.driver.expect_popup() as popup_info:
-            self.driver.evaluate(
-                """
-                function(url) {
-                    new_window = open(url, "", "popup");
-                    globalThis.targetWindow = new_window;
-                    return new_window;
-                }
-                """,
-                self.driver.url,
-            )
-        popup = popup_info.value
-        return popup
-
-    def post_module(self):
-        self.driver.evaluate(
-            """
-            globalThis.targetWindow.postMessage(globalThis.cachedModule);
-            """
-        )
-
     def get_driver(self):
-        if self.prototype is not None and os.environ.get("CACHE_MODULE"):
-            return self.prototype[self.browser].popup()
-
         return self.browsers[self.browser].new_page()
 
     def prepare(self):
@@ -1080,7 +1009,6 @@ def playwright_common(
     browser,
     playwright_browsers,
     web_server_main,
-    playwright_prototype=None,
     load_pyodide=True,
 ):
     """Returns an initialized playwright page object"""
@@ -1098,7 +1026,6 @@ def playwright_common(
 
     playwright = cls(
         browsers=playwright_browsers,
-        prototype=playwright_prototype,
         server_port=server_port,
         server_hostname=server_hostname,
         server_log=server_log,
@@ -1111,28 +1038,13 @@ def playwright_common(
         playwright.quit()
 
 
-@pytest.fixture(scope="session")
-def playwright_prototype(request, playwright_browsers, web_server_main):
-    with playwright_common(
-        "firefox", playwright_browsers, web_server_main, playwright_prototype=None
-    ) as playwright_firefox, playwright_common(
-        "chrome", playwright_browsers, web_server_main, playwright_prototype=None
-    ) as playwright_chrome:
-        yield {
-            "firefox": playwright_firefox,
-            "chrome": playwright_chrome,
-        }
-
-
 @pytest.fixture(params=["firefox", "chrome"], scope="function")
-def playwright_standalone(
-    request, playwright_prototype, playwright_browsers, web_server_main
-):
+def playwright_standalone(request, playwright_browsers, web_server_main):
     # Avoid loading the fixture if the test is going to be skipped
     _maybe_skip_test(request.node)
 
     with playwright_common(
-        request.param, playwright_browsers, web_server_main, playwright_prototype
+        request.param, playwright_browsers, web_server_main
     ) as playwright:
         with set_webdriver_script_timeout(
             playwright, script_timeout=parse_driver_timeout(request)
@@ -1235,6 +1147,9 @@ if os.environ.get("PLAYWRIGHT"):
     selenium_webworker_standalone = playwright_webworker  # type: ignore
     selenium_standalone_noload = playwright_noload  # type: ignore
     selenium_standalone_noload = playwright_noload  # type: ignore
+    console_html_fixture = playwright_console_html_fixture  # type: ignore
+    selenium_context_manager = playwright_context_manager  # type: ignore
+    selenium_module_scope = playwright_module_scope  # type: ignore
 
 
 if (
