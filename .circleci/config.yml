@@ -440,7 +440,7 @@ workflows:
 
       - test-main:
           name: test-core-firefox
-          test-params: -k "firefox and not webworker" src packages/micropip packages/fpcast-test packages/sharedlib-test-py/
+          test-params: --durations 10 -k "firefox and not webworker" src packages/micropip packages/fpcast-test packages/sharedlib-test-py/
           requires:
             - build-core
           filters:
