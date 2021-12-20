@@ -38,6 +38,9 @@ substitutions:
   object which treats the response body as an archive and uses `shutil` to
   unpack it. {pr}`1935`
 
+- {{Fix}} The Pyodide event loop now works correctly with cancelled handles. In particular, `asyncio.wait_for` now functions as expected.
+  {pr}`2022`
+
 ### JavaScript package
 
 - {{Fix}} {any}`loadPyodide <globalThis.loadPyodide>` no longer fails in the
@@ -164,6 +167,9 @@ async function runPythonAsync(code, globals) {
   20% size reduction on average for packages that vendor tests (e.g. numpy,
   pandas, scipy).
   {pr}`1832`
+
+- {{ Enhancement }} upgraded numpy to 1.21.4
+  {pr}`1934`
 
 - {{ Fix }} The built-in pwd module of Python, which provides Unix specific
   feature, is now unvendored.
