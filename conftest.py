@@ -99,7 +99,7 @@ class SeleniumWrapper:
         server_hostname="127.0.0.1",
         server_log=None,
         load_pyodide=True,
-        script_timeout=20,
+        script_timeout=60,
     ):
         self.server_port = server_port
         self.server_hostname = server_hostname
@@ -1004,6 +1004,81 @@ class FirefoxPlaywrightWrapper(PlaywrightWrapper):
     browser = "firefox"
 
 
+class NodePlaywrightWrapper(PlaywrightWrapper):
+    browser = "node"
+
+    def init_node(self):
+        os.chdir("build")
+        self.p = pexpect.spawn(
+            f"node --expose-gc ../tools/node_test_driver.js {self.base_url}", timeout=60
+        )
+        self.p.setecho(False)
+        self.p.delaybeforesend = None
+        os.chdir("..")
+
+    def get_driver(self):
+        self._logs = []
+        self.init_node()
+
+        class NodeDriver:
+            def __getattr__(self, x):
+                raise NotImplementedError()
+
+        return NodeDriver()
+
+    def prepare_driver(self):
+        pass
+
+    def set_script_timeout(self, timeout):
+        self._timeout = timeout
+
+    def quit(self):
+        self.p.sendeof()
+
+    def refresh(self):
+        self.quit()
+        self.init_node()
+        self.javascript_setup()
+
+    def collect_garbage(self):
+        self.run_js("gc()")
+
+    @property
+    def logs(self):
+        return "\n".join(self._logs)
+
+    def clean_logs(self):
+        self._logs = []
+
+    def run_js_inner(self, code, check_code):
+        check_code = ""
+        wrapped = """
+            let result = await (async () => { %s })();
+            %s
+            return result;
+        """ % (
+            code,
+            check_code,
+        )
+        from uuid import uuid4
+
+        cmd_id = str(uuid4())
+        self.p.sendline(cmd_id)
+        self.p.sendline(wrapped)
+        self.p.sendline(cmd_id)
+        self.p.expect_exact(f"{cmd_id}:UUID\r\n", timeout=self._timeout)
+        self.p.expect_exact(f"{cmd_id}:UUID\r\n")
+        if self.p.before:
+            self._logs.append(self.p.before.decode()[:-2].replace("\r", ""))
+        self.p.expect(f"[01]\r\n")
+        success = int(self.p.match[0].decode()[0]) == 0
+        self.p.expect_exact(f"\r\n{cmd_id}:UUID\r\n")
+        if success:
+            return json.loads(self.p.before.decode().replace("undefined", "null"))
+        else:
+            raise JavascriptException("", self.p.before.decode())
+
+
 @contextlib.contextmanager
 def playwright_common(
     browser,
@@ -1019,8 +1094,7 @@ def playwright_common(
     elif browser == "chrome":
         cls = ChromePlaywrightWrapper
     elif browser == "node":
-        # FIXME
-        assert False
+        cls = NodePlaywrightWrapper
     else:
         assert False
 
@@ -1038,7 +1112,7 @@ def playwright_common(
         playwright.quit()
 
 
-@pytest.fixture(params=["firefox", "chrome"], scope="function")
+@pytest.fixture(params=["firefox", "chrome", "node"], scope="function")
 def playwright_standalone(request, playwright_browsers, web_server_main):
     # Avoid loading the fixture if the test is going to be skipped
     _maybe_skip_test(request.node)
@@ -1056,7 +1130,7 @@ def playwright_standalone(request, playwright_browsers, web_server_main):
 
 
 # playwright instance cached at the module level
-@pytest.fixture(params=["firefox", "chrome"], scope="module")
+@pytest.fixture(params=["firefox", "chrome", "node"], scope="module")
 def playwright_module_scope(request, playwright_browsers, web_server_main):
     with playwright_common(
         request.param, playwright_browsers, web_server_main
@@ -1102,7 +1176,7 @@ def playwright_noload_common(request, playwright_browsers, web_server_main):
                 print(playwright.logs)
 
 
-@pytest.fixture(params=["firefox", "chrome"], scope="function")
+@pytest.fixture(params=["firefox", "chrome", "node"], scope="function")
 def playwright_webworker(request, playwright_browsers, web_server_main):
     # Avoid loading the fixture if the test is going to be skipped
     _maybe_skip_test(request.node)
@@ -1113,7 +1187,7 @@ def playwright_webworker(request, playwright_browsers, web_server_main):
         yield playwright
 
 
-@pytest.fixture(params=["firefox", "chrome"], scope="function")
+@pytest.fixture(params=["firefox", "chrome", "node"], scope="function")
 def playwright_noload(request, playwright_browsers, web_server_main):
     """Only difference between this and `playwright` fixture is that this also tests on node."""
     # Avoid loading the fixture if the test is going to be skipped
