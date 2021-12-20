@@ -430,7 +430,7 @@ workflows:
 
       - test-main:
           name: test-core-chrome
-          test-params: -k "chrome and not webworker" src packages/micropip  packages/fpcast-test packages/sharedlib-test-py/
+          test-params: --durations 50 -k "chrome and not webworker" src packages/micropip  packages/fpcast-test packages/sharedlib-test-py/
           requires:
             - build-core
           filters:
