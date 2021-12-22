@@ -756,8 +756,13 @@ def playwright_browsers(request):
             args=[
                 "--js-flags=--expose-gc",
             ],
-        ).new_context()
-        firefox = p.firefox.launch().new_context()
+        )
+        firefox = p.firefox.launch(
+            #     firefox_user_prefs={
+            #         "javascript.options.wasm_baselinejit": True,
+            #         "javascript.options.wasm_optimizingjit": True,
+            #     }
+        )
         webkit = None
         try:
             yield {
@@ -1176,7 +1181,7 @@ def playwright_noload_common(request, playwright_browsers, web_server_main):
                 print(playwright.logs)
 
 
-@pytest.fixture(params=["firefox", "chrome", "node"], scope="function")
+@pytest.fixture(params=["firefox", "chrome"], scope="function")
 def playwright_webworker(request, playwright_browsers, web_server_main):
     # Avoid loading the fixture if the test is going to be skipped
     _maybe_skip_test(request.node)
