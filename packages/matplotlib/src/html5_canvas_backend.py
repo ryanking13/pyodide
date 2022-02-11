@@ -418,7 +418,7 @@ class RendererHTMLCanvas(RendererBase):
         if font_face_arguments not in _font_set:
             _font_set.add(font_face_arguments)
             f = FontFace.new(*font_face_arguments)
-            f.load().then(_load_font_into_web)
+            f.load().add_done_callback(_load_font_into_web)
 
         font_property_string = "{0} {1} {2:.3g}px {3}, {4}".format(
             prop.get_style(),
