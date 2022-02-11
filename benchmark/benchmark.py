@@ -11,7 +11,7 @@ sys.path.insert(0, str((Path(__file__).resolve().parents[1])))
 import conftest  # noqa: E402
 
 
-SKIP = set(["fft", "hyantes", "README", ".DS_Store"])
+SKIP = set(["fft", "hyantes", "README"])
 
 
 def print_entry(name, res):
