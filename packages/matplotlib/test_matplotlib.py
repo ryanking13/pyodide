@@ -141,7 +141,9 @@ def test_rendering(selenium):
         pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
-        print("test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend")
+        print(
+            "test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend"
+        )
     TARGET_PATH.symlink_to(TEST_PATH, True)
     try:
         selenium.run(
@@ -174,7 +176,9 @@ def test_draw_image(selenium):
         pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
-        print("test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend")
+        print(
+            "test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend"
+        )
     TARGET_PATH.symlink_to(TEST_PATH, True)
     try:
         selenium.run(
@@ -215,7 +219,9 @@ def test_draw_image_affine_transform(selenium):
         pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
-        print("test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend")
+        print(
+            "test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend"
+        )
     TARGET_PATH.symlink_to(TEST_PATH, True)
     try:
         selenium.run(
@@ -288,7 +294,9 @@ def test_draw_text_rotated(selenium):
         pytest.xfail(f"high recursion limit not supported for {selenium.browser}")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
-        print("test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend")
+        print(
+            "test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend"
+        )
     TARGET_PATH.symlink_to(TEST_PATH, True)
     try:
         selenium.run(
@@ -343,7 +351,9 @@ def test_draw_math_text(selenium):
         pytest.xfail(f"high recursion limit not supported for {selenium.browser}")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
-        print("test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend")
+        print(
+            "test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend"
+        )
     TARGET_PATH.symlink_to(TEST_PATH, True)
     try:
         selenium.run(
@@ -464,7 +474,9 @@ def test_custom_font_text(selenium):
         pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
-        print("test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend")
+        print(
+            "test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend"
+        )
     TARGET_PATH.symlink_to(TEST_PATH, True)
     try:
         selenium.run(
@@ -501,7 +513,9 @@ def test_zoom_on_polar_plot(selenium):
         pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
-        print("test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend")
+        print(
+            "test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend"
+        )
     TARGET_PATH.symlink_to(TEST_PATH, True)
     try:
         selenium.run(
@@ -546,7 +560,9 @@ def test_transparency(selenium):
         pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
-        print("test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend")
+        print(
+            "test supported only for html5 canvas backend. wasm backend is currently used. switching to html5 canvas backend"
+        )
     TARGET_PATH.symlink_to(TEST_PATH, True)
     try:
         selenium.run(
