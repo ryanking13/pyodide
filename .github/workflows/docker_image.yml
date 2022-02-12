@@ -16,7 +16,7 @@ on:
         default: ""
 env:
   GHCR_REGISTRY: ghcr.io
-  IMAGE_NAME: pyodide/pyodide-env
+  IMAGE_NAME: sihadan/pyodide-env-test
 jobs:
   build_docker:
     runs-on: ubuntu-latest
