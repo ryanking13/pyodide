@@ -492,7 +492,7 @@ workflows:
 
       - test-main:
           name: test-packages-firefox
-          test-params: -k firefox packages/test* packages/*/test*
+          test-params: -k "firefox and math" -s packages/matplotlib
           requires:
             - build-packages
           filters:
