@@ -384,6 +384,7 @@ class RendererHTMLCanvas(RendererBase):
         print("draw text")
 
         def _load_font_into_web(loaded_face):
+            print("_load_font_into_web")
             document.fonts.add(loaded_face.result())
             window.font_counter += 1
             self.fig.draw()
