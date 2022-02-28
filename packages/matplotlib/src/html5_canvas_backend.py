@@ -381,12 +381,15 @@ class RendererHTMLCanvas(RendererBase):
             self.ctx.restore()
 
     def draw_text(self, gc, x, y, s, prop, angle, ismath=False, mtext=None):
+        print("draw text")
+
         def _load_font_into_web(loaded_face):
             document.fonts.add(loaded_face.result())
             window.font_counter += 1
             self.fig.draw()
 
         if ismath:
+            print("is math")
             self._draw_math_text(gc, x, y, s, prop, angle)
             return
         angle = math.radians(angle)
@@ -408,7 +411,9 @@ class RendererHTMLCanvas(RendererBase):
         # it helps us to avoid the infinite loop of
         # load font --> redraw --> load font --> redraw --> ....
 
+        print("before if font_face_arguments not in _font_set")
         if font_face_arguments not in _font_set:
+            print("font load", font_face_arguments)
             _font_set.add(font_face_arguments)
             f = FontFace.new(*font_face_arguments)
             f.load().add_done_callback(_load_font_into_web)
