@@ -33,7 +33,7 @@ def get_canvas_data(selenium, prefix):
 
 
 def check_comparison(selenium, prefix, num_fonts):
-    font_wait = WebDriverWait(selenium.driver, timeout=350)
+    font_wait = WebDriverWait(selenium.driver, timeout=30)
     font_wait.until(FontsLoaded(num_fonts))
 
     # If we don't have a reference image, write one to disk
@@ -47,7 +47,7 @@ def check_comparison(selenium, prefix, num_fonts):
     plt.gcf().canvas.compare_reference_image(url, threshold)
     """
     )
-    wait = WebDriverWait(selenium.driver, timeout=350)
+    wait = WebDriverWait(selenium.driver, timeout=30)
     wait.until(ResultLoaded())
     assert selenium.run("window.font_counter") == num_fonts
     assert selenium.run("window.deviation") == 0
@@ -295,8 +295,6 @@ def test_draw_text_rotated(selenium_standalone):
     selenium = selenium_standalone
     if selenium.browser == "node":
         pytest.xfail("No supported matplotlib backends on node")
-    if selenium.browser == "chrome":
-        pytest.xfail(f"high recursion limit not supported for {selenium.browser}")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
         print(
@@ -354,8 +352,6 @@ def test_draw_math_text(selenium_standalone):
     selenium = selenium_standalone
     if selenium.browser == "node":
         pytest.xfail("No supported matplotlib backends on node")
-    if selenium.browser == "chrome":
-        pytest.xfail(f"high recursion limit not supported for {selenium.browser}")
     selenium.load_package("matplotlib")
     if get_backend(selenium) == "module://matplotlib.backends.wasm_backend":
         print(
