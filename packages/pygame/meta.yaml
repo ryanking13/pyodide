@@ -1,0 +1,14 @@
+package:
+  name: pygame
+  version: 2.1.2
+source:
+  url: https://files.pythonhosted.org/packages/9a/50/67767e5586a45e7e7b02e6f0e07853f8fcb81b54c66db6278f1a1344491f/pygame-2.1.2.tar.gz
+  sha256: d6d0eca28f886f0477cd0721ac688189155a587f2bb8eae740e52ca56c3ad23c
+test:
+  imports:
+    - pygame
+about:
+  home: https://www.pygame.org
+  PyPI: https://pypi.org/project/pygame
+  summary: Python Game Development
+  license: LGPL
