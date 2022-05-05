@@ -498,6 +498,34 @@ def handle_command_generate_args(
     return new_args
 
 
+def remove_duplicated_args(pkgname: str, args: list[str]) -> list[str]:
+    # For some unknown reason,
+    # some packages using CMake tries to link a same library multiple times,
+    # which leads to 'duplicated symbols' error.
+    # FIXME: This is a hack to remove duplicated arguments.
+
+    duplicated_libs = {
+        "opencv-python": ["libopencv_world.a"],
+        "torch": ["libcpuinfo.a", "libc10.a"],
+    }
+
+    def _duplicated(libs, arg, prev_args):
+        for lib in libs:
+            if lib in arg and arg in prev_args:
+                return True
+
+    if pkgname not in duplicated_libs:
+        return args
+
+    duplicated_lib = duplicated_libs[pkgname]
+    new_args: list[str] = []
+    for arg in args:
+        if not _duplicated(duplicated_lib, arg, new_args):
+            new_args.append(arg)
+
+    return new_args
+
+
 def handle_command(
     line: list[str],
     args: ReplayArgs,
@@ -528,18 +556,7 @@ def handle_command(
     if args.pkgname == "scipy":
         scipy_fixes(new_args)
 
-    # FIXME: For some unknown reason,
-    #        opencv-python tries to link a same library (libopencv_world.a) multiple times,
-    #        which leads to 'duplicated symbols' error.
-    if args.pkgname == "opencv-python":
-        duplicated_lib = "libopencv_world.a"
-        _new_args = []
-        for arg in new_args:
-            if duplicated_lib in arg and arg in _new_args:
-                continue
-            _new_args.append(arg)
-
-        new_args = _new_args
+    new_args = remove_duplicated_args(args.pkgname, new_args)
 
     returncode = subprocess.run(new_args).returncode
     if returncode != 0:

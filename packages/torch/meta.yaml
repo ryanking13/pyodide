@@ -1,0 +1,77 @@
+package:
+  name: torch
+  version: 1.11.0
+source:
+  url: https://github.com/pytorch/pytorch/releases/download/v1.11.0/pytorch-v1.11.0.tar.gz
+  sha256: dc0c2b8d13c112a2b9ea8757a475b0ce2ca97cd19c50a8b70b8c286676616f1d
+  # pytorch requires a few build dependencies.
+  # But it is not installed during the build.
+  # So `pypa/build` cannot install build requirements into its isolated build environments.
+  # We inject dummy pyproject.toml file with build dependencies specified.
+  extras:
+    - [extras/pyproject.toml, pyproject.toml]
+  patches:
+    - patches/0001-Inject-Path.patch
+    - patches/0002-Match-function-signature.patch
+
+requirements:
+  run:
+    - numpy
+# build:
+#   cxxflags: |
+#     -fPIC
+#     -s USE_ZLIB=1
+#   ldflags: |
+#     -lz
+build:
+  script: |
+    export VERBOSE=1
+    export USE_BREAKPAD=0
+    export USE_CUDA=0
+    export USE_CUDNN=0
+    export USE_FBGEMM=0
+    export USE_KINETO=0
+    export BUILD_TEST=0
+    export USE_MKLDNN=0
+    export USE_NNPACK=0
+    export USE_QNNPACK=0
+    export USE_DISTRIBUTED=0
+    export USE_TENSORPIPE=0
+    export USE_GLOO=0
+    export USE_MPI=0
+    export USE_SYSTEM_NCCL=0
+    export BUILD_CAFFE2_OPS=0
+    export BUILD_CAFFE2=0
+    export CMAKE_TOOLCHAIN_FILE=$PYODIDE_ROOT/packages/torch/cmake/Toolchain.cmake
+
+    # Note: We need protoc binary during the build
+    case "$(uname -s)" in
+        Linux*)     export MACHINE=linux;;
+        Darwin*)    export MACHINE=osx;;
+        *)          export MACHINE="UNKNOWN"
+    esac
+
+    # TODO: handle 32bit or arm case?
+    export PROTOC_VERSION="3.13.0"
+    export PROTOC_ZIP="protoc-${PROTOC_VERSION}-${MACHINE}-x86_64.zip"
+    export PROTOC_URL="https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}"
+
+    # TODO: set CAFFE2_CUSTOM_PROTOC_EXECUTABLE, PROTOBUF_PROTOC_EXECUTABLE instead of hardcoding paths.
+    wget ${PROTOC_URL}
+    unzip ${PROTOC_ZIP} -d protoc
+
+    export PROTOC_EXECUTABLE_PATH="$(pwd)/protoc/bin/protoc"
+    # ln -s "$(pwd)/protoc/bin/protoc" "$(pwd)/protoc/bin/protobuf::protoc"
+    # export PATH=${PATH}:$(pwd)/protoc/bin/
+    # export CAFFE2_CUSTOM_PROTOC_EXECUTABLE="$(pwd)/protoc/bin/protoc"
+    # export PROTOBUF_PROTOC_EXECUTABLE="$(pwd)/protoc/bin/protoc"
+
+test:
+  imports:
+    - torch
+    - torch.nn
+about:
+  home: https://pytorch.org/
+  PyPI: https://pypi.org/project/torch/
+  summary: Tensors and Dynamic neural networks in Python with strong GPU acceleration
+  license: BSD License (BSD-3)

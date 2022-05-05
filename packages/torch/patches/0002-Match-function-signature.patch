@@ -1,0 +1,27 @@
+From 66d4beb8d21a5e6a8de3b3574fdaafc2dfa3282a Mon Sep 17 00:00:00 2001
+From: ryanking13 <def6488@gmail.com>
+Date: Tue, 3 May 2022 07:06:50 +0000
+Subject: [PATCH 2/2] Match function signature
+
+---
+ c10/macros/Macros.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/c10/macros/Macros.h b/c10/macros/Macros.h
+index 28dc1df..4774c29 100644
+--- a/c10/macros/Macros.h
++++ b/c10/macros/Macros.h
+@@ -368,8 +368,8 @@ __host__ __device__
+     __assert_fail(
+         const char* assertion,
+         const char* file,
+-        unsigned int line,
+-        const char* function) throw()
++        int line,
++        const char* function)
+ // We match the declaration of __assert_fail exactly how it is in glibc in case
+ // parts of the program are compiled with different NDEBUG settings. Otherwise
+ // we might get 'ambiguous declaration' error.
+-- 
+2.35.1
+
