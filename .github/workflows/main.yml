@@ -128,7 +128,7 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install -r requirements.txt
-          pip install playwright && python -m playwright install
+          pip install playwright && python -m playwright install --with-deps
 
       - name: run core tests
         env:
