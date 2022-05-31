@@ -60,7 +60,7 @@ def selenium_common(
     web_server_main,
     load_pyodide=True,
     script_type="classic",
-    browsers=None,
+    playwright_browser=None,
 ):
     """Returns an initialized selenium object.
 
@@ -94,7 +94,7 @@ def selenium_common(
         server_hostname=server_hostname,
         server_log=server_log,
         load_pyodide=load_pyodide,
-        browsers=browsers,
+        playwright_browser=playwright_browser,
         script_type=script_type,
         dist_dir=dist_dir,
     )
