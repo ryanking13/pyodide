@@ -1,4 +1,6 @@
+import _thread
 import contextlib
+import threading
 
 import pytest
 
@@ -15,12 +17,13 @@ from .server import spawn_web_server
 from .utils import parse_driver_timeout, set_webdriver_script_timeout
 
 
-@pytest.fixture(scope="module")
-def playwright_browser(request, browser_type):
+@pytest.fixture(scope="session")
+def playwright_session(request):
     if request.config.option.runner.lower() != "playwright":
         yield None
+
+    # import playwright here to allow running tests without playwright installation
     else:
-        # import playwright here to allow running tests without playwright installation
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
@@ -29,28 +32,47 @@ def playwright_browser(request, browser_type):
                 returncode=1,
             )
 
-        with sync_playwright() as p:
-            try:
-                match browser_type:
-                    case "chrome":
-                        browser = p.chromium.launch(
-                            args=[
-                                "--js-flags=--expose-gc",
-                            ],
-                        )
-                    case "firefox":
-                        browser = p.firefox.launch()
-                    case "safari":
-                        browser = p.webkit.launch()
-                    case "node":
-                        browser = None
-            except Exception as e:
-                pytest.exit(f"playwright failed to launch\n{e}", returncode=1)
-            try:
-                yield browser
-            finally:
-                if browser is not None:
-                    browser.close()
+        p = sync_playwright().start()
+        yield p
+
+        # Stopping a playwright context manager hangs sometimes
+        # so we add a timeout to silently exit if it takes too long
+        timer = threading.Timer(10, lambda: _thread.interrupt_main())
+        timer.start()
+        try:
+            p.stop()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            timer.cancel()
+
+
+@pytest.fixture(scope="module")
+def playwright_browser(request, playwright_session, browser_type):
+    if request.config.option.runner.lower() != "playwright":
+        yield None
+    else:
+        try:
+            match browser_type:
+                case "chrome":
+                    browser = playwright_session.chromium.launch(
+                        args=[
+                            "--js-flags=--expose-gc",
+                        ],
+                    )
+                case "firefox":
+                    browser = playwright_session.firefox.launch()
+                case "safari":
+                    browser = playwright_session.webkit.launch()
+                case "node":
+                    browser = None
+        except Exception as e:
+            pytest.exit(f"playwright failed to launch\n{e}", returncode=1)
+        try:
+            yield browser
+        finally:
+            if browser is not None:
+                browser.close()
 
 
 @contextlib.contextmanager
