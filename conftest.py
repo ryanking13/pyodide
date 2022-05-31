@@ -16,9 +16,8 @@ sys.path.append(str(ROOT_PATH / "pyodide-build"))
 sys.path.append(str(ROOT_PATH / "src" / "py"))
 
 from pyodide_test_runner.fixture import (  # noqa: F401
-    browser_type,
     console_html_fixture,
-    playwright_browsers,
+    playwright_browser,
     script_type,
     selenium,
     selenium_common,
@@ -64,8 +63,8 @@ def pytest_generate_tests(metafunc):
     if runner == "playwright":
         browsers.append("safari")
 
-    if "browser" in metafunc.fixturenames:
-        metafunc.parametrize("browser", browsers)
+    if "browser_type" in metafunc.fixturenames:
+        metafunc.parametrize("browser_type", browsers, scope="module")
 
 
 def pytest_configure(config):

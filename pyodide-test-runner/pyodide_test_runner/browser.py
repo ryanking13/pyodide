@@ -375,15 +375,15 @@ class SeleniumWrapper(BrowserWrapper):
 
 
 class PlaywrightWrapper(BrowserWrapper):
-    def __init__(self, browsers, *args, **kwargs):
-        self.browsers = browsers
+    def __init__(self, playwright_browser, *args, **kwargs):
+        self.playwright_browser = playwright_browser
         super().__init__(*args, **kwargs)
 
     def goto(self, page):
         self.driver.goto(page)
 
     def get_driver(self):
-        return self.browsers[self.browser].new_page()
+        return self.playwright_browser.new_page()
 
     def set_script_timeout(self, timeout):
         # playwright uses milliseconds for timeout
@@ -460,6 +460,10 @@ class PlaywrightChromeWrapper(PlaywrightWrapper):
 
 class PlaywrightFirefoxWrapper(PlaywrightWrapper):
     browser = "firefox"
+
+
+class PlaywrightSafariWrapper(PlaywrightWrapper):
+    browser = "safari"
 
 
 class NodeWrapper(BrowserWrapper):
