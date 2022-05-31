@@ -36,24 +36,29 @@ def playwright_browsers(request):
                     ],
                 )
                 firefox = p.firefox.launch()
-                # webkit = p.webkit.launch()
+                safari = p.webkit.launch()
             except Exception as e:
                 pytest.exit(f"playwright failed to launch\n{e}", returncode=1)
             try:
                 yield {
                     "chrome": chromium,
                     "firefox": firefox,
-                    # "webkit": webkit,
+                    "safari": safari,
                 }
             finally:
                 chromium.close()
                 firefox.close()
-                # webkit.close()
+                safari.close()
 
 
 @contextlib.contextmanager
 def selenium_common(
-    request, web_server_main, load_pyodide=True, script_type="classic", browsers=None
+    request,
+    browser_type,
+    web_server_main,
+    load_pyodide=True,
+    script_type="classic",
+    browsers=None,
 ):
     """Returns an initialized selenium object.
 
@@ -74,10 +79,10 @@ def selenium_common(
         ("playwright", "node"): NodeWrapper,
     }
 
-    cls = browser_set.get((runner_type, request.param))
+    cls = browser_set.get((runner_type, browser_type))
     if cls is None:
         raise AssertionError(
-            f"Unknown runner or browser: {runner_type} / {request.param}"
+            f"Unknown runner or browser: {runner_type} / {browser_type}"
         )
 
     dist_dir = request.config.getoption("--dist-dir")
@@ -96,10 +101,10 @@ def selenium_common(
         runner.quit()
 
 
-@pytest.fixture(params=["firefox", "chrome", "node"], scope="function")
-def selenium_standalone(request, web_server_main, playwright_browsers):
+@pytest.fixture(scope="function")
+def selenium_standalone(request, browser_type, web_server_main, playwright_browsers):
     with selenium_common(
-        request, web_server_main, browsers=playwright_browsers
+        request, browser_type, web_server_main, browsers=playwright_browsers
     ) as selenium:
         with set_webdriver_script_timeout(
             selenium, script_timeout=parse_driver_timeout(request.node)
@@ -110,10 +115,11 @@ def selenium_standalone(request, web_server_main, playwright_browsers):
                 print(selenium.logs)
 
 
-@pytest.fixture(params=["firefox", "chrome", "node"], scope="module")
-def selenium_esm(request, web_server_main, playwright_browsers):
+@pytest.fixture(scope="module")
+def selenium_esm(request, browser_type, web_server_main, playwright_browsers):
     with selenium_common(
         request,
+        browser_type,
         web_server_main,
         load_pyodide=True,
         browsers=playwright_browsers,
@@ -130,10 +136,11 @@ def selenium_esm(request, web_server_main, playwright_browsers):
 
 @contextlib.contextmanager
 def selenium_standalone_noload_common(
-    request, web_server_main, playwright_browsers, script_type="classic"
+    request, browser_type, web_server_main, playwright_browsers, script_type="classic"
 ):
     with selenium_common(
         request,
+        browser_type,
         web_server_main,
         load_pyodide=False,
         browsers=playwright_browsers,
@@ -148,36 +155,45 @@ def selenium_standalone_noload_common(
                 print(selenium.logs)
 
 
-@pytest.fixture(params=["firefox", "chrome"], scope="function")
+@pytest.fixture(scope="function")
 def selenium_webworker_standalone(
-    request, web_server_main, playwright_browsers, script_type
+    request, browser_type, web_server_main, playwright_browsers, script_type
 ):
     # Avoid loading the fixture if the test is going to be skipped
-    if request.param == "firefox" and script_type == "module":
+    if browser_type == "firefox" and script_type == "module":
         pytest.skip("firefox does not support module type web worker")
 
+    if browser_type == "node":
+        pytest.skip("node does not support webworker")
+
     with selenium_standalone_noload_common(
-        request, web_server_main, playwright_browsers, script_type=script_type
+        request,
+        browser_type,
+        web_server_main,
+        playwright_browsers,
+        script_type=script_type,
     ) as selenium:
         yield selenium
 
 
-@pytest.fixture(params=["firefox", "chrome", "node"], scope="function")
-def selenium_standalone_noload(request, web_server_main, playwright_browsers):
+@pytest.fixture(scope="function")
+def selenium_standalone_noload(
+    request, browser_type, web_server_main, playwright_browsers
+):
     """Only difference between this and selenium_webworker_standalone is that
     this also tests on node."""
 
     with selenium_standalone_noload_common(
-        request, web_server_main, playwright_browsers
+        request, browser_type, web_server_main, playwright_browsers
     ) as selenium:
         yield selenium
 
 
 # selenium instance cached at the module level
-@pytest.fixture(params=["firefox", "chrome", "node"], scope="module")
-def selenium_module_scope(request, web_server_main, playwright_browsers):
+@pytest.fixture(scope="module")
+def selenium_module_scope(request, browser_type, web_server_main, playwright_browsers):
     with selenium_common(
-        request, web_server_main, browsers=playwright_browsers
+        request, browser_type, web_server_main, browsers=playwright_browsers
     ) as selenium:
         yield selenium
 
@@ -203,10 +219,18 @@ def selenium(request, selenium_module_scope):
             yield selenium
 
 
-@pytest.fixture(params=["firefox", "chrome"], scope="function")
-def console_html_fixture(request, web_server_main, playwright_browsers):
+@pytest.fixture(scope="function")
+def console_html_fixture(request, browser_type, web_server_main, playwright_browsers):
+
+    if browser_type == "node":
+        pytest.skip("no support in node")
+
     with selenium_common(
-        request, web_server_main, load_pyodide=False, browsers=playwright_browsers
+        request,
+        browser_type,
+        web_server_main,
+        load_pyodide=False,
+        browsers=playwright_browsers,
     ) as selenium:
         selenium.goto(
             f"http://{selenium.server_hostname}:{selenium.server_port}/console.html"
@@ -234,4 +258,9 @@ def web_server_secondary(request):
 
 @pytest.fixture(params=["classic", "module"], scope="module")
 def script_type(request):
+    return request.param
+
+
+@pytest.fixture(params=["firefox", "chrome", "node"], scope="module")
+def browser_type(request):
     return request.param

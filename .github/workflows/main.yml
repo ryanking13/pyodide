@@ -107,7 +107,7 @@ jobs:
       fail-fast: false
       matrix:
         runner: [playwright]
-        browser: [firefox, chrome]
+        browser: [firefox, chrome, webkit]
 
     steps:
       - uses: actions/checkout@v2
