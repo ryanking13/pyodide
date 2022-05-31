@@ -75,7 +75,7 @@ with playwright instead as follows.
 First install playwright
 
 ```bash
-pip install playwright && python -m playwright install
+pip install playwright && python -m playwright install --with-deps
 ```
 
 Then use the `--runner` argument to specify to run tests with playwright.
