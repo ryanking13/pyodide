@@ -64,8 +64,8 @@ def pytest_generate_tests(metafunc):
     if runner == "playwright":
         browsers.append("safari")
 
-    if "browser_type" in metafunc.fixturenames:
-        metafunc.parametrize("browser_type", browsers, scope="module")
+    if "browser_name" in metafunc.fixturenames:
+        metafunc.parametrize("browser_name", browsers, scope="module")
 
 
 def pytest_configure(config):
