@@ -1,6 +1,4 @@
-import _thread
 import contextlib
-import threading
 
 import pytest
 
@@ -14,7 +12,7 @@ from .browser import (
     SeleniumFirefoxWrapper,
 )
 from .server import spawn_web_server
-from .utils import parse_driver_timeout, set_webdriver_script_timeout
+from .utils import parse_driver_timeout, set_webdriver_script_timeout, skip_if_hang
 
 
 @pytest.fixture(scope="session")
@@ -35,16 +33,9 @@ def playwright_session(request):
         p = sync_playwright().start()
         yield p
 
-        # Stopping a playwright context manager hangs sometimes
-        # so we add a timeout to silently exit if it takes too long
-        timer = threading.Timer(10, lambda: _thread.interrupt_main())
-        timer.start()
-        try:
-            p.stop()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            timer.cancel()
+        # Stopping a playwright context hangs sometimes
+        # so we add a timeout to silently skip if it takes too long
+        skip_if_hang(p.stop)
 
 
 @pytest.fixture(scope="module")
@@ -72,7 +63,9 @@ def playwright_browser(request, playwright_session, browser_type):
             yield browser
         finally:
             if browser is not None:
-                browser.close()
+                # Stopping a playwright context hangs sometimes
+                # so we add a timeout to silently skip if it takes too long
+                skip_if_hang(browser.close)
 
 
 @contextlib.contextmanager
