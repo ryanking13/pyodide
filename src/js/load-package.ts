@@ -103,6 +103,7 @@ function addPackageToLoad(
   // If the package is already loaded, we don't add dependencies, but warn
   // the user later. This is especially important if the loaded package is
   // from a custom url, in which case adding dependencies is wrong.
+  const loadedPackages = getLoadedPackages();
   if (loadedPackages[name] !== undefined) {
     return;
   }
@@ -229,7 +230,6 @@ async function installPackage(
   for (const dynlib of dynlibs) {
     await loadDynlib(dynlib, pkg.shared_library);
   }
-  loadedPackages[name] = pkg;
 }
 
 /**
@@ -344,22 +344,24 @@ export async function loadPackage(
   }
 
   const [toLoad, toLoadShared] = recursiveDependencies(names, errorCallback);
+  const loadedPackages = getLoadedPackages();
 
   for (const [pkg, uri] of [...toLoad, ...toLoadShared]) {
     const loaded = loadedPackages[pkg];
     if (loaded === undefined) {
       continue;
     }
+    const source = loaded.source;
     toLoad.delete(pkg);
     toLoadShared.delete(pkg);
     // If uri is from the DEFAULT_CHANNEL, we assume it was added as a
     // dependency, which was previously overridden.
-    if (loaded === uri || uri === DEFAULT_CHANNEL) {
+    if (source === uri || uri === DEFAULT_CHANNEL) {
       messageCallback(`${pkg} already loaded from ${loaded}`);
     } else {
       errorCallback(
         `URI mismatch, attempting to load package ${pkg} from ${uri} ` +
-          `while it is already loaded from ${loaded}. To override a dependency, ` +
+          `while it is already loaded from ${source}. To override a dependency, ` +
           `load the custom package first.`
       );
     }
@@ -378,7 +380,7 @@ export async function loadPackage(
       {};
     const packageLoadPromises: { [name: string]: Promise<Uint8Array> } = {};
     for (const [name, channel] of toLoadShared) {
-      if (loadedPackages[name]) {
+      if ([name]) {
         // Handle the race condition where the package was loaded between when
         // we did dependency resolution and when we acquired the lock.
         toLoadShared.delete(name);
@@ -454,10 +456,15 @@ export async function loadPackage(
 
 /**
  * The list of packages that Pyodide has loaded.
- * Use ``Object.keys(pyodide.loadedPackages)`` to get the list of names of
- * loaded packages, and ``pyodide.loadedPackages[package_name]`` to access
- * install location for a particular ``package_name``.
+ * Use ``Object.keys(pyodide.getLoadedPackages())`` to get the list of names of
+ * loaded packages, and ``pyodide.getLoadedPackages()[package_name]`` to access
+ * the version, install location, and install source for a particular ``package_name``.
  */
-export let loadedPackages: { [key: string]: string } = {};
+export function getLoadedPackages() {
+  const packages = API.package_loader.loaded_packages();
+  const packagesJs = packages.toJs({ dict_converter: Object.fromEntries });
+  packages.destroy();
+  return packagesJs;
+}
 
 API.packageIndexReady = initializePackageIndex(API.config.indexURL);

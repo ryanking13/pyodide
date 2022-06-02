@@ -3,10 +3,10 @@ declare var Hiwire: any;
 declare var API: any;
 import "./module.ts";
 
-import { loadPackage, loadedPackages } from "./load-package";
+import { loadPackage, getLoadedPackages } from "./load-package";
 import { isPyProxy, PyBuffer, PyProxy, TypedArray } from "./pyproxy.gen";
 import { PythonError } from "./error_handling.gen";
-export { loadPackage, loadedPackages, isPyProxy };
+export { loadPackage, getLoadedPackages, isPyProxy };
 import "./error_handling.gen.js";
 
 /**
@@ -455,7 +455,7 @@ export type PyodideInterface = {
   version: typeof version;
   loadPackage: typeof loadPackage;
   loadPackagesFromImports: typeof loadPackagesFromImports;
-  loadedPackages: typeof loadedPackages;
+  getLoadedPackages: typeof getLoadedPackages;
   isPyProxy: typeof isPyProxy;
   runPython: typeof runPython;
   runPythonAsync: typeof runPythonAsync;
@@ -518,7 +518,7 @@ API.makePublicAPI = function (): PyodideInterface {
     version,
     loadPackage,
     loadPackagesFromImports,
-    loadedPackages,
+    getLoadedPackages,
     isPyProxy,
     runPython,
     runPythonAsync,
