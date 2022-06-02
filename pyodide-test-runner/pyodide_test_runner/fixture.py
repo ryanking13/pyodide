@@ -12,10 +12,10 @@ from .browser import (
     SeleniumFirefoxWrapper,
 )
 from .server import spawn_web_server
-from .utils import parse_driver_timeout, set_webdriver_script_timeout, skip_if_hang
+from .utils import parse_driver_timeout, set_webdriver_script_timeout
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def playwright_session(request):
     if request.config.option.runner.lower() != "playwright":
         yield None
@@ -32,10 +32,7 @@ def playwright_session(request):
 
         p = sync_playwright().start()
         yield p
-
-        # Stopping a playwright context hangs sometimes
-        # so we add a timeout to silently skip if it takes too long
-        skip_if_hang(p.stop)
+        p.stop()
 
 
 @pytest.fixture(scope="module")
@@ -63,9 +60,7 @@ def playwright_browser(request, playwright_session, browser_name):
             yield browser
         finally:
             if browser is not None:
-                # Stopping a playwright context hangs sometimes
-                # so we add a timeout to silently skip if it takes too long
-                skip_if_hang(browser.close)
+                browser.close()
 
 
 @contextlib.contextmanager

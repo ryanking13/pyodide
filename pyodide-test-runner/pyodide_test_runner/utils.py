@@ -1,9 +1,7 @@
-import _thread
 import contextlib
 import functools
 import json
 import re
-import threading
 from pathlib import Path
 
 import pytest
@@ -42,21 +40,6 @@ def parse_xfail_browsers(node) -> dict[str, str]:
     if mark is None:
         return {}
     return mark.kwargs
-
-
-def skip_if_hang(func, timeout=5):
-    # Stopping a playwright context manager hangs sometimes
-    # so we add a timeout to silently exit if it takes too long
-    timer = threading.Timer(timeout, lambda: _thread.interrupt_main())
-    timer.start()
-    try:
-        return func()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        timer.cancel()
-
-    return None
 
 
 def maybe_skip_test(item, dist_dir, delayed=False):

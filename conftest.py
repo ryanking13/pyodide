@@ -65,7 +65,7 @@ def pytest_generate_tests(metafunc):
         browsers.append("safari")
 
     if "browser_name" in metafunc.fixturenames:
-        metafunc.parametrize("browser_name", browsers, scope="module")
+        metafunc.parametrize("browser_name", browsers, scope="session")
 
 
 def pytest_configure(config):
