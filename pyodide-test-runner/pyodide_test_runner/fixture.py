@@ -15,6 +15,9 @@ from .server import spawn_web_server
 from .utils import parse_driver_timeout, set_webdriver_script_timeout
 
 
+# FIXME: Using `session` scope can reduce the number of playwright context generation.
+#        However, generating too many browser contexts in a single playwright context
+#        seems to cause a mystrious hang when closing the context.
 @pytest.fixture(scope="module")
 def playwright_session(request):
     if request.config.option.runner.lower() != "playwright":
