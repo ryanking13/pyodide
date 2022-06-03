@@ -87,10 +87,10 @@ def test_pyodide_analyzer():
         "checkInterrupt",
         "unpackArchive",
         "registerComlink",
+        "getLoadedPackages",
     }
     assert attribute_names == {
         "FS",
-        "loadedPackages",
         "globals",
         "version",
         "pyodide_py",
@@ -187,13 +187,6 @@ def test_summary():
         "",
         "The Pyodide version.",
         "pyodide.version",
-    )
-    assert attributes["loadedPackages"] == (
-        "",
-        "loadedPackages",
-        "",
-        "The list of packages that Pyodide has loaded.",
-        "pyodide.loadedPackages",
     )
 
     assert functions["loadPackagesFromImports"][:-2] == (
