@@ -380,7 +380,7 @@ export async function loadPackage(
       {};
     const packageLoadPromises: { [name: string]: Promise<Uint8Array> } = {};
     for (const [name, channel] of toLoadShared) {
-      if ([name]) {
+      if (loadedPackages[name]) {
         // Handle the race condition where the package was loaded between when
         // we did dependency resolution and when we acquired the lock.
         toLoadShared.delete(name);
