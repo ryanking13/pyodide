@@ -9,6 +9,7 @@ from pyodide_test_runner import run_in_pyodide, spawn_web_server
 
 sys.path.append(str(Path(__file__).resolve().parent / "src"))
 
+import importlib.metadata
 from importlib.metadata import Distribution, PackageNotFoundError
 
 try:
@@ -59,11 +60,9 @@ def _mock_importlib_distributions():
 
 @pytest.fixture
 def mock_importlib(monkeypatch):
-    from micropip import _micropip
-
-    monkeypatch.setattr(_micropip, "importlib_version", _mock_importlib_version)
+    monkeypatch.setattr(importlib.metadata, "version", _mock_importlib_version)
     monkeypatch.setattr(
-        _micropip, "importlib_distributions", _mock_importlib_distributions
+        importlib.metadata, "distributions", _mock_importlib_distributions
     )
 
 
@@ -513,7 +512,9 @@ async def test_install_version_compare_prerelease(mock_fetch: mock_fetch_cls) ->
 
 
 @pytest.mark.asyncio
-async def test_install_no_deps(mock_fetch: mock_fetch_cls) -> None:
+async def test_install_no_deps(  # type: ignore[no-untyped-def]
+    mock_fetch: mock_fetch_cls, wheel_base, mock_importlib
+) -> None:
     dummy = "dummy"
     dep = "dep"
     mock_fetch.add_pkg_version(dummy, requirements=[dep])
@@ -627,6 +628,7 @@ def test_list_loaded_from_js(selenium_standalone_micropip):
         await pyodide.runPythonAsync(`
             import micropip
             pkgs = micropip.list()
+
             assert "regex" in pkgs
             assert pkgs["regex"].source.lower() == "pyodide"
         `);

@@ -3,12 +3,6 @@ from typing import Any
 BUILTIN_PACKAGES: dict[str, dict[str, Any]] = {}
 
 
-class loadedPackages:
-    @staticmethod
-    def to_py():
-        return {}
-
-
 from urllib.request import Request, urlopen
 
 
@@ -38,6 +32,5 @@ __all__ = [
     "fetch_bytes",
     "fetch_string",
     "BUILTIN_PACKAGES",
-    "loadedPackages",
     "loadPackage",
 ]

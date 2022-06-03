@@ -6,7 +6,6 @@ if IN_BROWSER:
         fetch_bytes,
         fetch_string,
         loadDynlib,
-        loadedPackages,
         loadPackage,
     )
 else:
@@ -15,7 +14,6 @@ else:
         fetch_bytes,
         fetch_string,
         loadDynlib,
-        loadedPackages,
         loadPackage,
     )
 
@@ -23,7 +21,6 @@ __all__ = [
     "fetch_bytes",
     "fetch_string",
     "BUILTIN_PACKAGES",
-    "loadedPackages",
     "loadDynlib",
     "loadPackage",
 ]
