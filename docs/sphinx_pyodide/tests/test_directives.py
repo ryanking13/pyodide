@@ -94,6 +94,8 @@ def test_pyodide_analyzer():
         "globals",
         "version",
         "pyodide_py",
+        "ERRNO_CODES",
+        "PATH",
     }
 
 
@@ -134,7 +136,7 @@ def test_content():
 
     rp = results["runPython"]
     assert rp["directive"] == "function"
-    assert rp["sig"] == "code, globals=Module.globals)"
+    assert rp["sig"] == "code, options)"
     assert "Runs a string of Python code from JavaScript." in rp["body"]
 
 
@@ -169,7 +171,7 @@ def test_summary():
     assert globals["loadPyodide"] == (
         "*async* ",
         "loadPyodide",
-        "(config)",
+        "(options)",
         "Load the main Pyodide wasm module and initialize it.",
         "globalThis.loadPyodide",
     )
