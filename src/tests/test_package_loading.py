@@ -73,7 +73,7 @@ def test_list_loaded_urls(selenium_standalone):
     ]
     assert (
         selenium.run_js("return pyodide.getLoadedPackages()['pyparsing'].source")
-        == "default channel"
+        == "pyodide"
     )
 
 
@@ -173,7 +173,7 @@ def test_load_package_unknown(selenium_standalone):
         (dist_dir / "pyparsing-custom-3.0.6-py3-none-any.whl").unlink()
 
     assert selenium_standalone.run_js(
-        "return pyodide.getLoadedPackages().hasOwnProperty('pyparsing-custom')"
+        "return pyodide.getLoadedPackages().hasOwnProperty('pyparsing')"
     )
 
 

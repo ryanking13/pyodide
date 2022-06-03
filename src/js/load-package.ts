@@ -62,7 +62,7 @@ API.setCdnUrl = function (url: string) {
 //
 // Dependency resolution
 //
-const DEFAULT_CHANNEL = "default channel";
+const DEFAULT_CHANNEL = "pyodide";
 // Regexp for validating package name and URI
 const package_uri_regexp = /^.*?([^\/]*)\.whl$/;
 
@@ -357,7 +357,7 @@ export async function loadPackage(
     // If uri is from the DEFAULT_CHANNEL, we assume it was added as a
     // dependency, which was previously overridden.
     if (source === uri || uri === DEFAULT_CHANNEL) {
-      messageCallback(`${pkg} already loaded from ${loaded}`);
+      messageCallback(`${pkg} already loaded from ${source}`);
     } else {
       errorCallback(
         `URI mismatch, attempting to load package ${pkg} from ${uri} ` +
@@ -409,7 +409,6 @@ export async function loadPackage(
         .then(async (buffer) => {
           await installPackage(name, buffer, channel);
           loaded.push(name);
-          loadedPackages[name] = channel;
         })
         .catch((err) => {
           console.warn(err);
@@ -423,7 +422,6 @@ export async function loadPackage(
         .then(async (buffer) => {
           await installPackage(name, buffer, channel);
           loaded.push(name);
-          loadedPackages[name] = channel;
         })
         .catch((err) => {
           console.warn(err);

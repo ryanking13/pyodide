@@ -1,12 +1,12 @@
 import base64
 import binascii
+import importlib.metadata
 import re
 import shutil
 import site
 import sysconfig
 import tarfile
 from importlib.machinery import EXTENSION_SUFFIXES
-from importlib.metadata import distributions as importlib_distributions
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import IO, Iterable, Literal
@@ -325,7 +325,13 @@ def loaded_packages() -> dict[str, dict[str, str]]:
         A list of loaded packages.
     """
     pkgs = {}
-    for dist in importlib_distributions():
+
+    # importlib uses lru_cache to optimize path access.
+    # it sometimes leads to outdated distributions, so we manually clear cache.
+    # See: https://github.com/python/cpython/blob/941d7054c1f73aa097bdc4e55ede819c8f123819/Lib/importlib/metadata/__init__.py#L784
+    importlib.metadata.FastPath.__new__.cache_clear()  # type: ignore[attr-defined]
+
+    for dist in importlib.metadata.distributions():
         name = dist.name
         version = dist.version
         source = dist.read_text("PYODIDE_SOURCE") or "unknown"
