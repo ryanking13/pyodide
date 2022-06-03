@@ -85,7 +85,8 @@ function _uri_to_package_name(package_uri: string): string | undefined {
 function addPackageToLoad(
   name: string,
   toLoad: Map<string, string>,
-  toLoadShared: Map<string, string>
+  toLoadShared: Map<string, string>,
+  loadedPackages: { [name: string]: any }
 ) {
   name = name.toLowerCase();
   if (toLoad.has(name)) {
@@ -103,13 +104,12 @@ function addPackageToLoad(
   // If the package is already loaded, we don't add dependencies, but warn
   // the user later. This is especially important if the loaded package is
   // from a custom url, in which case adding dependencies is wrong.
-  const loadedPackages = getLoadedPackages();
   if (loadedPackages[name] !== undefined) {
     return;
   }
 
   for (let dep_name of pkg_info.depends) {
-    addPackageToLoad(dep_name, toLoad, toLoadShared);
+    addPackageToLoad(dep_name, toLoad, toLoadShared, loadedPackages);
   }
 }
 
@@ -122,6 +122,7 @@ function addPackageToLoad(
  */
 function recursiveDependencies(
   names: string[],
+  loadedPackages: { [name: string]: any },
   errorCallback: (err: string) => void
 ) {
   const toLoad = new Map();
@@ -129,7 +130,7 @@ function recursiveDependencies(
   for (let name of names) {
     const pkgname = _uri_to_package_name(name);
     if (pkgname === undefined) {
-      addPackageToLoad(name, toLoad, toLoadShared);
+      addPackageToLoad(name, toLoad, toLoadShared, loadedPackages);
       continue;
     }
     if (toLoad.has(pkgname) && toLoad.get(pkgname) !== name) {
@@ -343,9 +344,13 @@ export async function loadPackage(
     names = [names as string];
   }
 
-  const [toLoad, toLoadShared] = recursiveDependencies(names, errorCallback);
   const releaseLock = await acquirePackageLock();
   const loadedPackages = getLoadedPackages();
+  const [toLoad, toLoadShared] = recursiveDependencies(
+    names,
+    loadedPackages,
+    errorCallback
+  );
 
   for (const [pkg, uri] of [...toLoad, ...toLoadShared]) {
     const loaded = loadedPackages[pkg];
