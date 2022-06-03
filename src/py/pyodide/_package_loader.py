@@ -326,11 +326,6 @@ def loaded_packages() -> dict[str, dict[str, str]]:
     """
     pkgs = {}
 
-    # importlib uses lru_cache to optimize path access.
-    # it sometimes leads to outdated distributions, so we manually clear cache.
-    # See: https://github.com/python/cpython/blob/941d7054c1f73aa097bdc4e55ede819c8f123819/Lib/importlib/metadata/__init__.py#L784
-    importlib.metadata.FastPath.__new__.cache_clear()  # type: ignore[attr-defined]
-
     for dist in importlib.metadata.distributions():
         name = dist.name
         version = dist.version

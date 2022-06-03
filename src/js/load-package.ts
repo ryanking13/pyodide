@@ -344,6 +344,7 @@ export async function loadPackage(
   }
 
   const [toLoad, toLoadShared] = recursiveDependencies(names, errorCallback);
+  const releaseLock = await acquirePackageLock();
   const loadedPackages = getLoadedPackages();
 
   for (const [pkg, uri] of [...toLoad, ...toLoadShared]) {
@@ -373,28 +374,15 @@ export async function loadPackage(
   }
 
   const packageNames = [...toLoad.keys(), ...toLoadShared.keys()].join(", ");
-  const releaseLock = await acquirePackageLock();
   try {
     messageCallback(`Loading ${packageNames}`);
     const sharedLibraryLoadPromises: { [name: string]: Promise<Uint8Array> } =
       {};
     const packageLoadPromises: { [name: string]: Promise<Uint8Array> } = {};
     for (const [name, channel] of toLoadShared) {
-      if (loadedPackages[name]) {
-        // Handle the race condition where the package was loaded between when
-        // we did dependency resolution and when we acquired the lock.
-        toLoadShared.delete(name);
-        continue;
-      }
       sharedLibraryLoadPromises[name] = downloadPackage(name, channel);
     }
     for (const [name, channel] of toLoad) {
-      if (loadedPackages[name]) {
-        // Handle the race condition where the package was loaded between when
-        // we did dependency resolution and when we acquired the lock.
-        toLoad.delete(name);
-        continue;
-      }
       packageLoadPromises[name] = downloadPackage(name, channel);
     }
 
@@ -458,7 +446,7 @@ export async function loadPackage(
  * loaded packages, and ``pyodide.getLoadedPackages()[package_name]`` to access
  * the version, install location, and install source for a particular ``package_name``.
  */
-export function getLoadedPackages() {
+export function getLoadedPackages(): { [name: string]: any } {
   const packages = API.package_loader.loaded_packages();
   const packagesJs = packages.toJs({ dict_converter: Object.fromEntries });
   packages.destroy();
