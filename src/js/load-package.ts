@@ -375,6 +375,7 @@ export async function loadPackage(
 
   if (toLoad.size === 0 && toLoadShared.size === 0) {
     messageCallback("No new packages to load");
+    releaseLock();
     return;
   }
 
