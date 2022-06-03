@@ -345,42 +345,41 @@ export async function loadPackage(
   }
 
   const releaseLock = await acquirePackageLock();
-  const loadedPackages = getLoadedPackages();
-  const [toLoad, toLoadShared] = recursiveDependencies(
-    names,
-    loadedPackages,
-    errorCallback
-  );
-
-  for (const [pkg, uri] of [...toLoad, ...toLoadShared]) {
-    const loaded = loadedPackages[pkg];
-    if (loaded === undefined) {
-      continue;
-    }
-    const source = loaded.source;
-    toLoad.delete(pkg);
-    toLoadShared.delete(pkg);
-    // If uri is from the DEFAULT_CHANNEL, we assume it was added as a
-    // dependency, which was previously overridden.
-    if (source === uri || uri === DEFAULT_CHANNEL) {
-      messageCallback(`${pkg} already loaded from ${source}`);
-    } else {
-      errorCallback(
-        `URI mismatch, attempting to load package ${pkg} from ${uri} ` +
-          `while it is already loaded from ${source}. To override a dependency, ` +
-          `load the custom package first.`
-      );
-    }
-  }
-
-  if (toLoad.size === 0 && toLoadShared.size === 0) {
-    messageCallback("No new packages to load");
-    releaseLock();
-    return;
-  }
-
-  const packageNames = [...toLoad.keys(), ...toLoadShared.keys()].join(", ");
   try {
+    const loadedPackages = getLoadedPackages();
+    const [toLoad, toLoadShared] = recursiveDependencies(
+      names,
+      loadedPackages,
+      errorCallback
+    );
+
+    for (const [pkg, uri] of [...toLoad, ...toLoadShared]) {
+      const loaded = loadedPackages[pkg];
+      if (loaded === undefined) {
+        continue;
+      }
+      const source = loaded.source;
+      toLoad.delete(pkg);
+      toLoadShared.delete(pkg);
+      // If uri is from the DEFAULT_CHANNEL, we assume it was added as a
+      // dependency, which was previously overridden.
+      if (source === uri || uri === DEFAULT_CHANNEL) {
+        messageCallback(`${pkg} already loaded from ${source}`);
+      } else {
+        errorCallback(
+          `URI mismatch, attempting to load package ${pkg} from ${uri} ` +
+            `while it is already loaded from ${source}. To override a dependency, ` +
+            `load the custom package first.`
+        );
+      }
+    }
+
+    if (toLoad.size === 0 && toLoadShared.size === 0) {
+      messageCallback("No new packages to load");
+      return;
+    }
+
+    const packageNames = [...toLoad.keys(), ...toLoadShared.keys()].join(", ");
     messageCallback(`Loading ${packageNames}`);
     const sharedLibraryLoadPromises: { [name: string]: Promise<Uint8Array> } =
       {};
