@@ -137,7 +137,7 @@ def test_content():
     rp = results["runPython"]
     assert rp["directive"] == "function"
     assert rp["sig"] == "code, options)"
-    assert "Runs a string of Python code from JavaScript." in rp["body"]
+    assert "Runs a string of Python code from JavaScript" in rp["body"]
 
 
 JsDocSummary = get_jsdoc_summary_directive(dummy_app)
