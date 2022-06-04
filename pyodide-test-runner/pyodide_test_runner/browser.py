@@ -387,7 +387,8 @@ class PlaywrightWrapper(BrowserWrapper):
 
     def set_script_timeout(self, timeout):
         # playwright uses milliseconds for timeout
-        self.driver.set_default_timeout(timeout * 1000)
+        self._timeout = timeout * 1000
+        self.driver.set_default_timeout(self._timeout)
 
     def quit(self):
         self.driver.close()
@@ -399,19 +400,24 @@ class PlaywrightWrapper(BrowserWrapper):
     def run_js_inner(self, code, check_code):
         # playwright `evaluate` waits until primise to resolve,
         # so we don't need to use a callback like selenium.
-        wrapper = """
-            let run = async () => { %s }
-            (async () => {
-                try {
+        wrapper = f"""
+            let run = async () => {{ {code} }}
+            const async_run = (async () => {{
+                try {{
                     let result = await run();
-                    %s
+                    clearTimeout(timeout);
+                    {check_code}
                     return [0, result];
-                } catch (e) {
+                }} catch (e) {{
                     return [1, e.toString(), e.stack];
-                }
-            })()
+                }}
+            }})
+            const timeout = new Promise((resolve, reject) => {{
+                setTimeout(resolve, {self._timeout}, [1, "Timeout after {self._timeout}ms", ""]);
+            }})
+            Promise.race([async_run(), timeout])
         """
-        retval = self.driver.evaluate(wrapper % (code, check_code))
+        retval = self.driver.evaluate(wrapper)
         if retval[0] == 0:
             return retval[1]
         else:
