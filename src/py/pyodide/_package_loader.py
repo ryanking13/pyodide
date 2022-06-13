@@ -30,6 +30,8 @@ PLATFORM_TAG_REGEX = re.compile(
     r"\.(cpython|pypy|jython)-[0-9]{2,}[a-z]*(-[a-z0-9_-]*)?"
 )
 
+_loaded_packages = {}
+
 
 def parse_wheel_name(filename: str) -> tuple[str, str, str, str, str]:
     tokens = filename.split("-")
@@ -324,19 +326,25 @@ def loaded_packages() -> dict[str, dict[str, str]]:
     -------
         A list of loaded packages.
     """
-    pkgs = {}
+
+    # Reading every package metadata is slow, so we'll cache the result.
+    global _loaded_packages
 
     for dist in importlib.metadata.distributions():
         name = dist.name
+
+        if name in _loaded_packages:
+            continue
+
         version = dist.version
         source = dist.read_text("PYODIDE_SOURCE") or "unknown"
         installer = dist.read_text("INSTALLER") or ""
         installer = installer.strip()
 
-        pkgs[name] = {
+        _loaded_packages[name] = {
             "version": version,
             "installer": installer,
             "source": source,
         }
 
-    return pkgs
+    return _loaded_packages.copy()
