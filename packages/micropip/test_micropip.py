@@ -60,6 +60,9 @@ def _mock_importlib_distributions():
 
 @pytest.fixture
 def mock_importlib(monkeypatch):
+    import pyodide._package_loader
+
+    pyodide._package_loader._loaded_packages = {}
     monkeypatch.setattr(importlib.metadata, "version", _mock_importlib_version)
     monkeypatch.setattr(
         importlib.metadata, "distributions", _mock_importlib_distributions
