@@ -39,6 +39,7 @@ from ._core import (
     destroy_proxies,
     to_js,
 )
+from ._package_loader import loaded_packages
 from ._run_js import run_js
 from .http import open_url
 
@@ -76,6 +77,7 @@ __all__ = [
     "should_quiet",
     "to_js",
     "unregister_js_module",
+    "loaded_packages",
 ]
 
 

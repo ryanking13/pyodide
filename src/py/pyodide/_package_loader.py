@@ -1,19 +1,20 @@
 import base64
 import binascii
+import importlib.metadata
 import re
 import shutil
+import site
 import sysconfig
 import tarfile
 from importlib.machinery import EXTENSION_SUFFIXES
 from pathlib import Path
-from site import getsitepackages
 from tempfile import NamedTemporaryFile
 from typing import IO, Iterable, Literal
 from zipfile import ZipFile
 
 from ._core import IN_BROWSER, JsProxy, to_js
 
-SITE_PACKAGES = Path(getsitepackages()[0])
+SITE_PACKAGES = Path(site.getsitepackages()[0])
 STD_LIB = Path(sysconfig.get_path("stdlib"))
 TARGETS = {"site": SITE_PACKAGES, "lib": STD_LIB}
 ZIP_TYPES = {".whl", ".zip"}
@@ -314,3 +315,28 @@ def sub_resource_hash(sha_256: str) -> str:
     """
     binary_digest = binascii.unhexlify(sha_256)
     return "sha256-" + base64.b64encode(binary_digest).decode()
+
+
+def loaded_packages() -> dict[str, dict[str, str]]:
+    """Returns a list of loaded packages.
+
+    Returns
+    -------
+        A list of loaded packages.
+    """
+    pkgs = {}
+
+    for dist in importlib.metadata.distributions():
+        name = dist.name
+        version = dist.version
+        source = dist.read_text("PYODIDE_SOURCE") or "unknown"
+        installer = dist.read_text("INSTALLER") or ""
+        installer = installer.strip()
+
+        pkgs[name] = {
+            "version": version,
+            "installer": installer,
+            "source": source,
+        }
+
+    return pkgs

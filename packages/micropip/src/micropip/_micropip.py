@@ -1,12 +1,11 @@
 import asyncio
 import hashlib
 import importlib
+import importlib.metadata
 import json
 from asyncio import gather
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
-from importlib.metadata import distributions as importlib_distributions
-from importlib.metadata import version as importlib_version
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -18,7 +17,7 @@ from packaging.tags import Tag, sys_tags
 from packaging.utils import canonicalize_name, parse_wheel_filename
 from packaging.version import Version
 
-from pyodide import to_js
+from pyodide import loaded_packages, to_js
 from pyodide._package_loader import get_dynlibs, wheel_dist_info_dir
 
 from ._compat import (
@@ -26,7 +25,6 @@ from ._compat import (
     fetch_bytes,
     fetch_string,
     loadDynlib,
-    loadedPackages,
     loadPackage,
 )
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
@@ -161,7 +159,6 @@ class WheelInfo:
         await gather(*map(lambda dynlib: loadDynlib(dynlib, False), dynlibs))
 
     async def install(self, target: Path) -> None:
-        url = self.url
         if not self.data:
             raise RuntimeError(
                 "Micropip internal error: attempted to install wheel before downloading it?"
@@ -172,7 +169,6 @@ class WheelInfo:
         await self.load_libraries(target)
         name = self.project_name
         assert name
-        setattr(loadedPackages, name, url)
 
 
 FAQ_URLS = {
@@ -261,7 +257,7 @@ class Transaction:
     def check_version_satisfied(self, req: Requirement) -> bool:
         ver = None
         try:
-            ver = importlib_version(req.name)
+            ver = importlib.metadata.version(req.name)
         except PackageNotFoundError:
             pass
         if req.name in self.locked:
@@ -523,7 +519,7 @@ def freeze() -> str:
     from copy import deepcopy
 
     packages = deepcopy(BUILTIN_PACKAGES)
-    for dist in importlib_distributions():
+    for dist in importlib.metadata.distributions():
         name = dist.name
         version = dist.version
         url = dist.read_text("PYODIDE_URL")
@@ -580,34 +576,12 @@ def _list():
 
     # Add packages that are loaded through pyodide.loadPackage
     packages = PackageDict()
-    for dist in importlib_distributions():
-        name = dist.name
-        version = dist.version
-        source = dist.read_text("PYODIDE_SOURCE")
-        if source is None:
-            # source is None if PYODIDE_SOURCE does not exist. In this case the
-            # wheel was installed manually, not via `pyodide.loadPackage` or
-            # `micropip`.
-            #
-            # tzdata is a funny special case: we install it with pip and then
-            # vendor it into our standard library. We should probably remove
-            # tzdata's dist-info because it's kind of weird to have dist-info in
-            # the stdlib.
-            continue
+    _packages = loaded_packages()
+    for name, pkg in _packages.items():
         packages[name] = PackageMetadata(
             name=name,
-            version=version,
-            source=source,
+            version=pkg["version"],
+            source=pkg["source"],
         )
 
-    for name, pkg_source in loadedPackages.to_py().items():
-        if name in packages:
-            continue
-
-        version = BUILTIN_PACKAGES[name]["version"]
-        source_ = "pyodide"
-        if pkg_source != "default channel":
-            # Pyodide package loaded from a custom URL
-            source_ = pkg_source
-        packages[name] = PackageMetadata(name=name, version=version, source=source_)
     return packages

@@ -68,12 +68,12 @@ def test_list_loaded_urls(selenium_standalone):
     selenium = selenium_standalone
 
     selenium.load_package("pyparsing")
-    assert selenium.run_js("return Object.keys(pyodide.loadedPackages)") == [
+    assert selenium.run_js("return Object.keys(pyodide.getLoadedPackages())") == [
         "pyparsing"
     ]
     assert (
-        selenium.run_js("return pyodide.loadedPackages['pyparsing']")
-        == "default channel"
+        selenium.run_js("return pyodide.getLoadedPackages()['pyparsing'].source")
+        == "pyodide"
     )
 
 
@@ -151,10 +151,12 @@ def test_load_failure_retry(selenium_standalone):
     selenium.load_package("http://invalidurl/pytz-2021.3-py3-none-any.whl")
     assert selenium.logs.count("Loading pytz") == 1
     assert selenium.logs.count("The following error occurred while loading pytz:") == 1
-    assert selenium.run_js("return Object.keys(pyodide.loadedPackages)") == []
+    assert selenium.run_js("return Object.keys(pyodide.getLoadedPackages())") == []
     selenium.load_package("pytz")
     selenium.run("import pytz")
-    assert selenium.run_js("return Object.keys(pyodide.loadedPackages)") == ["pytz"]
+    assert selenium.run_js("return Object.keys(pyodide.getLoadedPackages())") == [
+        "pytz"
+    ]
 
 
 def test_load_package_unknown(selenium_standalone):
@@ -171,7 +173,7 @@ def test_load_package_unknown(selenium_standalone):
         (dist_dir / "pyparsing-custom-3.0.6-py3-none-any.whl").unlink()
 
     assert selenium_standalone.run_js(
-        "return pyodide.loadedPackages.hasOwnProperty('pyparsing-custom')"
+        "return pyodide.getLoadedPackages().hasOwnProperty('pyparsing')"
     )
 
 
@@ -217,7 +219,7 @@ def test_js_load_package_from_python(selenium_standalone):
         """
     )
     assert f"Loaded {to_load[0]}" in selenium.logs
-    assert selenium.run_js("return Object.keys(pyodide.loadedPackages)") == to_load
+    assert selenium.run_js("return Object.keys(pyodide.getLoadedPackages())") == to_load
 
 
 @pytest.mark.parametrize("jinja2", ["jinja2", "Jinja2"])

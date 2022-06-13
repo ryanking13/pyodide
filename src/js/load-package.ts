@@ -62,7 +62,7 @@ API.setCdnUrl = function (url: string) {
 //
 // Dependency resolution
 //
-const DEFAULT_CHANNEL = "default channel";
+const DEFAULT_CHANNEL = "pyodide";
 // Regexp for validating package name and URI
 const package_uri_regexp = /^.*?([^\/]*)\.whl$/;
 
@@ -85,7 +85,8 @@ function _uri_to_package_name(package_uri: string): string | undefined {
 function addPackageToLoad(
   name: string,
   toLoad: Map<string, string>,
-  toLoadShared: Map<string, string>
+  toLoadShared: Map<string, string>,
+  loadedPackages: { [name: string]: any }
 ) {
   name = name.toLowerCase();
   if (toLoad.has(name)) {
@@ -108,7 +109,7 @@ function addPackageToLoad(
   }
 
   for (let dep_name of pkg_info.depends) {
-    addPackageToLoad(dep_name, toLoad, toLoadShared);
+    addPackageToLoad(dep_name, toLoad, toLoadShared, loadedPackages);
   }
 }
 
@@ -121,6 +122,7 @@ function addPackageToLoad(
  */
 function recursiveDependencies(
   names: string[],
+  loadedPackages: { [name: string]: any },
   errorCallback: (err: string) => void
 ) {
   const toLoad = new Map();
@@ -128,7 +130,7 @@ function recursiveDependencies(
   for (let name of names) {
     const pkgname = _uri_to_package_name(name);
     if (pkgname === undefined) {
-      addPackageToLoad(name, toLoad, toLoadShared);
+      addPackageToLoad(name, toLoad, toLoadShared, loadedPackages);
       continue;
     }
     if (toLoad.has(pkgname) && toLoad.get(pkgname) !== name) {
@@ -229,7 +231,6 @@ async function installPackage(
   for (const dynlib of dynlibs) {
     await loadDynlib(dynlib, pkg.shared_library);
   }
-  loadedPackages[name] = pkg;
 }
 
 /**
@@ -343,56 +344,50 @@ export async function loadPackage(
     names = [names as string];
   }
 
-  const [toLoad, toLoadShared] = recursiveDependencies(names, errorCallback);
-
-  for (const [pkg, uri] of [...toLoad, ...toLoadShared]) {
-    const loaded = loadedPackages[pkg];
-    if (loaded === undefined) {
-      continue;
-    }
-    toLoad.delete(pkg);
-    toLoadShared.delete(pkg);
-    // If uri is from the DEFAULT_CHANNEL, we assume it was added as a
-    // dependency, which was previously overridden.
-    if (loaded === uri || uri === DEFAULT_CHANNEL) {
-      messageCallback(`${pkg} already loaded from ${loaded}`);
-    } else {
-      errorCallback(
-        `URI mismatch, attempting to load package ${pkg} from ${uri} ` +
-          `while it is already loaded from ${loaded}. To override a dependency, ` +
-          `load the custom package first.`
-      );
-    }
-  }
-
-  if (toLoad.size === 0 && toLoadShared.size === 0) {
-    messageCallback("No new packages to load");
-    return;
-  }
-
-  const packageNames = [...toLoad.keys(), ...toLoadShared.keys()].join(", ");
   const releaseLock = await acquirePackageLock();
   try {
+    const loadedPackages = getLoadedPackages();
+    const [toLoad, toLoadShared] = recursiveDependencies(
+      names,
+      loadedPackages,
+      errorCallback
+    );
+
+    for (const [pkg, uri] of [...toLoad, ...toLoadShared]) {
+      const loaded = loadedPackages[pkg];
+      if (loaded === undefined) {
+        continue;
+      }
+      const source = loaded.source;
+      toLoad.delete(pkg);
+      toLoadShared.delete(pkg);
+      // If uri is from the DEFAULT_CHANNEL, we assume it was added as a
+      // dependency, which was previously overridden.
+      if (source === uri || uri === DEFAULT_CHANNEL) {
+        messageCallback(`${pkg} already loaded from ${source}`);
+      } else {
+        errorCallback(
+          `URI mismatch, attempting to load package ${pkg} from ${uri} ` +
+            `while it is already loaded from ${source}. To override a dependency, ` +
+            `load the custom package first.`
+        );
+      }
+    }
+
+    if (toLoad.size === 0 && toLoadShared.size === 0) {
+      messageCallback("No new packages to load");
+      return;
+    }
+
+    const packageNames = [...toLoad.keys(), ...toLoadShared.keys()].join(", ");
     messageCallback(`Loading ${packageNames}`);
     const sharedLibraryLoadPromises: { [name: string]: Promise<Uint8Array> } =
       {};
     const packageLoadPromises: { [name: string]: Promise<Uint8Array> } = {};
     for (const [name, channel] of toLoadShared) {
-      if (loadedPackages[name]) {
-        // Handle the race condition where the package was loaded between when
-        // we did dependency resolution and when we acquired the lock.
-        toLoadShared.delete(name);
-        continue;
-      }
       sharedLibraryLoadPromises[name] = downloadPackage(name, channel);
     }
     for (const [name, channel] of toLoad) {
-      if (loadedPackages[name]) {
-        // Handle the race condition where the package was loaded between when
-        // we did dependency resolution and when we acquired the lock.
-        toLoad.delete(name);
-        continue;
-      }
       packageLoadPromises[name] = downloadPackage(name, channel);
     }
 
@@ -407,7 +402,6 @@ export async function loadPackage(
         .then(async (buffer) => {
           await installPackage(name, buffer, channel);
           loaded.push(name);
-          loadedPackages[name] = channel;
         })
         .catch((err) => {
           console.warn(err);
@@ -421,7 +415,6 @@ export async function loadPackage(
         .then(async (buffer) => {
           await installPackage(name, buffer, channel);
           loaded.push(name);
-          loadedPackages[name] = channel;
         })
         .catch((err) => {
           console.warn(err);
@@ -454,10 +447,15 @@ export async function loadPackage(
 
 /**
  * The list of packages that Pyodide has loaded.
- * Use ``Object.keys(pyodide.loadedPackages)`` to get the list of names of
- * loaded packages, and ``pyodide.loadedPackages[package_name]`` to access
- * install location for a particular ``package_name``.
+ * Use ``Object.keys(pyodide.getLoadedPackages())`` to get the list of names of
+ * loaded packages, and ``pyodide.getLoadedPackages()[package_name]`` to access
+ * the version, install location, and install source for a particular ``package_name``.
  */
-export let loadedPackages: { [key: string]: string } = {};
+export function getLoadedPackages(): { [name: string]: any } {
+  const packages = API.package_loader.loaded_packages();
+  const packagesJs = packages.toJs({ dict_converter: Object.fromEntries });
+  packages.destroy();
+  return packagesJs;
+}
 
 API.packageIndexReady = initializePackageIndex(API.config.indexURL);
