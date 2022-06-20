@@ -15,10 +15,11 @@ build:
 requirements:
   run:
     - numpy
-    - newick
     - tskit
-    - demes
     - libgsl
+  pip:
+    - newick
+    - demes
 test:
   imports:
     - msprime

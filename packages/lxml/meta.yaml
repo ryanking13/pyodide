@@ -9,11 +9,12 @@ build:
     -Wno-implicit-function-declaration
 requirements:
   run:
-    - beautifulsoup4
-    - cssselect
-    - html5lib
     - libxml
     - libxslt
+  pip:
+    - cssselect
+    - html5lib
+    - beautifulsoup4
 test:
   imports:
     - lxml

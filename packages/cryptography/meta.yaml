@@ -28,8 +28,9 @@ build:
 requirements:
   run:
     - openssl
-    - six
     - cffi
+  pip:
+    - six
 test:
   imports:
     - cryptography

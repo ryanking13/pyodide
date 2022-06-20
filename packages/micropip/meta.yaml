@@ -4,9 +4,10 @@ package:
   _tag: pyodide.stdlib
 requirements:
   run:
-    - pyparsing
-    - packaging
     - distutils # TODO: remove once there is a release with https://github.com/pypa/packaging/pull/396
+  pip:
+    - packaging
+    - pyparsing
 source:
   path: src
 test:

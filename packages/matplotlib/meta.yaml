@@ -38,17 +38,17 @@ build:
 
 requirements:
   run:
-    - cycler
     - distutils
-    - fonttools
     - kiwisolver
     - numpy
-    - packaging
     - Pillow
-    - pyparsing
-    - python-dateutil
+  pip:
+    - fonttools
     - pytz
-
+    - cycler
+    - python-dateutil
+    - packaging
+    - pyparsing
 test:
   imports:
     - matplotlib

@@ -1,9 +1,7 @@
 from pyodide_test_runner import run_in_pyodide
 
 
-@run_in_pyodide(
-    packages=["numpy", "svgwrite", "attrs", "pyrsistent", "jsonschema", "tskit"]
-)
+@run_in_pyodide(packages=["numpy", "pyrsistent", "tskit"])
 def test_tskit(selenium):
     import tskit
 

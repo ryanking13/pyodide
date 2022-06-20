@@ -6,14 +6,15 @@ source:
   sha256: 92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea
 requirements:
   run:
-    - atomicwrites
+    - setuptools
+  pip:
     - attrs
+    - iniconfig
+    - atomicwrites
     - more-itertools
     - pluggy
-    - py
-    - setuptools
     - six
-    - iniconfig
+    - py
 test:
   imports:
     - pytest

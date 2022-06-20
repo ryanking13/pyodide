@@ -15,5 +15,5 @@ test:
     - pysat
 
 requirements:
-  run:
+  pip:
     - six

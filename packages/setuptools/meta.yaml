@@ -10,6 +10,7 @@ build:
 requirements:
   run:
     - distutils
+  pip:
     - pyparsing
 test:
   imports:

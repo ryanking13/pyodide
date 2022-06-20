@@ -17,6 +17,7 @@ requirements:
   run:
     - scipy
     - joblib
+  pip:
     - threadpoolctl
 
 test:

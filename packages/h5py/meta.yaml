@@ -13,6 +13,7 @@ requirements:
   run:
     - numpy
     - libhdf5
+  pip:
     - pkgconfig
 
 test:

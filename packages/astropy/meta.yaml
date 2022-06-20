@@ -11,10 +11,11 @@ build:
 requirements:
   run:
     - distutils
-    - packaging
     - numpy
     - pyerfa
     - pyyaml
+  pip:
+    - packaging
 test:
   imports:
     - astropy

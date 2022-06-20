@@ -8,5 +8,5 @@ test:
   imports:
     - pydantic
 requirements:
-  run:
+  pip:
     - typing-extensions

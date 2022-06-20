@@ -7,8 +7,9 @@ source:
 requirements:
   run:
     - numpy
-    - svgwrite
+  pip:
     - jsonschema
+    - svgwrite
 test:
   imports:
     - tskit

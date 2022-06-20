@@ -15,9 +15,10 @@ requirements:
   run:
     - distutils
     - numpy
-    - python-dateutil
-    - pytz
     - setuptools
+  pip:
+    - pytz
+    - python-dateutil
 test:
   imports:
     - pandas
