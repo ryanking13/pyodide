@@ -19,6 +19,7 @@ from queue import PriorityQueue, Queue
 from threading import Lock, Thread
 from time import perf_counter, sleep
 from typing import Any
+from urllib import request
 
 from . import common
 from .buildpkg import needs_rebuild
@@ -95,6 +96,26 @@ class StdLibPackage(BasePackage):
 
     def tests_path(self) -> Path | None:
         return None
+
+
+@dataclasses.dataclass
+class PyPIPackage(BasePackage):
+    def __init__(self, pkgname: str):
+        self.name = pkgname
+
+        self._pkg_wheel = None
+
+    def _fetch_latest_matching_wheel(self, pkgname):
+        pypi_url = f"https://pypi.org/pypi/{pkgname}/json"
+        with request.urlopen(pypi_url) as response:
+            data = json.loads(response.read().decode("utf-8"))
+
+        data = reversed(data["releases"])
+
+        # response = request.urlopen(src_metadata["url"])
+        # if self._pkg_wheel is None:
+        #     self._pkg_wheel = find_matching_wheels(self.name)
+        # return self._pkg_wheel
 
 
 @dataclasses.dataclass
