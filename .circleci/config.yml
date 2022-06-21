@@ -293,6 +293,20 @@ jobs:
             ghr -t "${GITHUB_TOKEN}" -u "${CIRCLE_PROJECT_USERNAME}" -r "${CIRCLE_PROJECT_REPONAME}" -c "${CIRCLE_SHA1}" -delete  "${CIRCLE_TAG}" ./pyodide-build-${CIRCLE_TAG}.tar.bz2
 
       - run:
+          name: Deploy pyodide.js to NPM
+          command: |
+            echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" > ~/.npmrc
+            cd src/js
+            export JS_VERSION=$(node -p "require('./package.json').version")
+
+            if [[ ${JS_VERSION} =~ [alpha|beta|rc|dev] ]]; then
+              npm publish --tag next
+            else
+              npm publish
+              npm dist-tag add pyodide@${JS_VERSION} next
+            fi
+
+      - run:
           name: Set PYODIDE_BASE_URL
           command: PYODIDE_BASE_URL="https://cdn.jsdelivr.net/pyodide/v${CIRCLE_TAG}/full/" make update_base_url
       - run:
