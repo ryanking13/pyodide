@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import importlib
 import json
+import warnings
 from asyncio import gather
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
@@ -202,6 +203,13 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
         reverse=True,
     )
     for ver in candidate_versions:
+        if str(ver) not in releases:
+            pkg_name = metadata.get("info", {}).get("name", "UNKNOWN")
+            warnings.warn(
+                f"The package '{pkg_name}' contains an invalid version: '{ver}'. This version will be skipped"
+            )
+            continue
+
         release = releases[str(ver)]
         for fileinfo in release:
             url = fileinfo["url"]
@@ -604,10 +612,15 @@ def _list():
         if name in packages:
             continue
 
-        version = REPODATA_PACKAGES[name]["version"]
-        source_ = "pyodide"
-        if pkg_source != "default channel":
-            # Pyodide package loaded from a custom URL
+        if name in REPODATA_PACKAGES:
+            version = REPODATA_PACKAGES[name]["version"]
+            source_ = "pyodide"
+            if pkg_source != "default channel":
+                # Pyodide package loaded from a custom URL
+                source_ = pkg_source
+        else:
+            # TODO: calculate version from wheel metadata
+            version = "unknown"
             source_ = pkg_source
         packages[name] = PackageMetadata(name=name, version=version, source=source_)
     return packages

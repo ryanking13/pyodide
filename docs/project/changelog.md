@@ -166,6 +166,13 @@ substitutions:
   packages into a `repodata.json` file.
   {pr}`2581`
 
+- {{ Fix }} `micropip.list` now works correctly when there are packages
+  that are installed via `pyodide.loadPackage` from a custom URL.
+  {pr}`2743`
+
+- {{ Fix }} micropip now skips package versions which do not follow PEP440.
+  {pr}`2754`
+
 ### Packages
 
 - {{ Enhancement }} Pillow now supports WEBP image format {pr}`2407`.
