@@ -293,10 +293,11 @@ jobs:
             export JS_VERSION=$(node -p "require('./package.json').version")
 
             if [[ ${JS_VERSION} =~ [alpha|beta|rc|dev] ]]; then
+              echo "Publishing an unstable release"
               npm publish --tag next
             else
+              echo "Publishing a stable release"
               npm publish
-              npm dist-tag add pyodide@${JS_VERSION} next
             fi
       - run:
           name: Deploy Github Releases
