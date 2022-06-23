@@ -289,7 +289,7 @@ jobs:
           command: |
             echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" > ~/.npmrc
             cd dist
-            sed -i 's#"name": "pyodide",#"name": "ryanking13-pyodide",#' package.json
+            sed -i 's#"name": "pyodide",#"name": "ryanking13-pyodide-test",#' package.json
             export JS_VERSION=$(node -p "require('./package.json').version")
 
             if [[ ${JS_VERSION} =~ [alpha|beta|rc|dev] ]]; then
