@@ -282,7 +282,7 @@ jobs:
       - run:
           name: Install requirements
           command: |
-            apk add --no-cache --update python3 make
+            apk add --no-cache --update python3 make nodejs npm
             python3 -m pip install awscli
       - run:
           name: Deploy pyodide.js to NPM
@@ -332,7 +332,7 @@ jobs:
       - run:
           name: Install requirements
           command: |
-            apk add --no-cache --update python3 make
+            apk add --no-cache --update python3 make nodejs npm
             python3 -m pip install awscli
       - run:
           name: Set PYODIDE_BASE_URL
