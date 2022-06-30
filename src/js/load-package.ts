@@ -230,8 +230,11 @@ async function installPackage(
     installer: "pyodide.loadPackage",
     source: channel === DEFAULT_CHANNEL ? "pyodide" : channel,
   });
-  for (const dynlib of dynlibs) {
-    await loadDynlib(dynlib, pkg.shared_library);
+
+  if (!pkg.shared_library) {
+    for (const dynlib of dynlibs) {
+      await loadDynlib(dynlib);
+    }
   }
   loadedPackages[name] = pkg;
 }
@@ -275,7 +278,7 @@ const acquireDynlibLock = createLock();
  * @param shared Is this a shared library or not?
  * @private
  */
-async function loadDynlib(lib: string, shared: boolean) {
+async function loadDynlib(lib: string) {
   const node = Module.FS.lookupPath(lib).node;
   let byteArray;
   if (node.mount.type == Module.FS.filesystems.MEMFS) {
@@ -300,6 +303,7 @@ async function loadDynlib(lib: string, shared: boolean) {
 
   try {
     const module = await Module.loadWebAssemblyModule(byteArray, {
+      global: true,
       loadAsync: true,
       nodelete: true,
       allowUndefined: true,
@@ -307,12 +311,6 @@ async function loadDynlib(lib: string, shared: boolean) {
     });
     Module.preloadedWasm[lib] = module;
     Module.preloadedWasm[lib.split("/").pop()!] = module;
-    if (shared) {
-      Module.loadDynamicLibrary(lib, {
-        global: true,
-        nodelete: true,
-      });
-    }
   } catch (e: any) {
     if (e && e.message && e.message.includes("need to see wasm magic number")) {
       console.warn(
