@@ -34,6 +34,9 @@ build:
 
     emmake make -j ${PYODIDE_JOBS:-3} blaslib lapacklib
     mkdir -p dist
-    emcc blas_WA.a lapack_WA.a F2CLIBS/libf2c.a ${SIDE_MODULE_LDFLAGS} -o dist/clapack_all.so
-    mkdir -p ${WASM_LIBRARY_DIR}/CLAPACK
+    emcc blas_WA.a ${SIDE_MODULE_LDFLAGS} -o dist/libblas.so
+    emcc lapack_WA.a ${SIDE_MODULE_LDFLAGS} -o dist/liblapack.so
+    emcc F2CLIBS/libf2c.a ${SIDE_MODULE_LDFLAGS} -o dist/libf2c.so
+    mkdir -p ${WASM_LIBRARY_DIR}/CLAPACK/lib
     cp -r INCLUDE ${WASM_LIBRARY_DIR}/CLAPACK/
+    cp -r dist/*.so ${WASM_LIBRARY_DIR}/CLAPACK/lib/
