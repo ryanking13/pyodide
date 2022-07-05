@@ -88,7 +88,7 @@ export LDFLAGS_BASE=\
 	-s MODULARIZE=1 \
 	-std=c++14 \
 	-s LZ4=1 \
-	-L $(CPYTHONROOT)/installs/python-$(PYVERSION)/lib/ \
+	-L$(CPYTHONROOT)/installs/python-$(PYVERSION)/lib/ \
 	-s WASM_BIGINT \
 	$(EXTRA_LDFLAGS)
 

@@ -1,0 +1,57 @@
+package:
+  name: libheif
+  version: 1.12.0
+
+source:
+  url: https://github.com/strukturag/libheif/releases/download/v1.12.0/libheif-1.12.0.tar.gz
+  sha256: e1ac2abb354fdc8ccdca71363ebad7503ad731c84022cf460837f0839e171718
+
+requirements:
+  run:
+    - libde265
+
+build:
+  library: true
+  script: |
+    # # Build options are adapted from https://github.com/strukturag/libheif/blob/v1.12.0/build-emscripten.sh
+
+    # # libheif uses `-Werror`, but we want don't want this
+    # # because often emcc complains about incompatible flags.
+    # # So we switch the order of flags to overwrite `-W` flags.
+    # sed -i 's@CFLAGS="$CFLAGS $WARNING_FLAGS"@CFLAGS="$WARNING_FLAGS $CFLAGS"@' configure
+    # sed -i 's@CXXFLAGS="$CXXFLAGS $WARNING_FLAGS"@CXXFLAGS="$WARNING_FLAGS $CXXFLAGS"@' configure
+
+    # # We are cross compiling
+    # # TODO: find a better way to set this using cmdline option
+    # sed -i 's@cross_compiling=no@cross_compiling=yes@' configure
+
+    # # Sadly `libtool` strip -s flags passed to a linker
+    # # so we hack CC and CXX to inject -sSIDE_MODULE=1 flag.
+    # # See: https://stackoverflow.com/questions/47191637/does-libtool-strip-all-options-with-m
+    # emconfigure ./configure \
+    #     CC="emcc -sSIDE_MODULE=1 -s MODULARIZE=1 -s LZ4=1" \
+    #     CXX="em++ -sSIDE_MODULE=1 -s MODULARIZE=1 -s LZ4=1" \
+    #     CFLAGS="-fPIC -Wno-error=linkflags -Wno-error=unused-command-line-argument" \
+    #     CXXFLAGS="-fPIC -Wno-error=linkflags -Wno-error=unused-command-line-argument" \
+    #     --prefix=${WASM_LIBRARY_DIR} \
+    #     --disable-multithreading \
+    #     --disable-go \
+    #     --disable-examples \
+    #     --disable-silent-rules
+
+    echo "set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)" > SupportSharedLib.cmake
+    sed -i 's@#include "heif_emscripten.h"@@' libheif/heif.cc
+
+    LDFLAGS="${SIDE_MODULE_LDFLAGS}" emcmake cmake \
+      -DCMAKE_CXX_FLAGS="-fPIC" \
+      -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
+      -DWITH_EXAMPLES=OFF \
+      -DLIBDE265_INCLUDE_DIR=${WASM_LIBRARY_DIR}/include \
+      -DLIBDE265_LIBRARY=${WASM_LIBRARY_DIR}/lib/libde265.a \
+      ./
+
+    emmake make -j ${PYODIDE_JOBS:-3}
+    emmake make install
+
+    # mkdir -p dist
+    # cp ${WASM_LIBRARY_DIR}/lib/libheif.so dist/
