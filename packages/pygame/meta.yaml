@@ -1,9 +1,25 @@
 package:
   name: pygame
-  version: 2.1.2
+  version: 2.1.3dev5
 source:
-  url: https://files.pythonhosted.org/packages/9a/50/67767e5586a45e7e7b02e6f0e07853f8fcb81b54c66db6278f1a1344491f/pygame-2.1.2.tar.gz
-  sha256: d6d0eca28f886f0477cd0721ac688189155a587f2bb8eae740e52ca56c3ad23c
+  url: https://github.com/pygame/pygame/archive/cfcbda61ec357121987307590867212ca9639a63.zip
+  sha256: 98f05ffa9deb6340376cd8ee3624f5657cc5c3e2e92e9b6adb438e22a801e27a
+build:
+  script: |
+    embuilder build --pic sdl2
+    embuilder build --pic sdl2_gfx
+    embuilder build --pic sdl2_image
+    embuilder build --pic sdl2_mixer
+    embuilder build --pic sdl2_ttf
+    export SDL_CONFIG=$(em-config CACHE)/sysroot/bin/sdl2-config
+    export PREFIX=""
+    export PYGAME_EXTRA_BASE
+    export CFLAGS="-DBUILD_STATIC -DSDL_NO_COMPAT -ferror-limit=1"
+    sed -i "s@sysconfig.get_config_var('MACHDEP') == 'emscripten'@True@" buildconfig/config.py
+
+requirements:
+  run:
+    - numpy
 test:
   imports:
     - pygame
