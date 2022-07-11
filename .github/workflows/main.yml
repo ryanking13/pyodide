@@ -52,6 +52,7 @@ jobs:
           sudo apt install -y build-essential git
           conda install -y nodejs ccache f2c pkg-config swig make patch pkg-config texinfo autoconf automake libtool sqlite
           pip install -r requirements.txt
+          make rust
 
       - name: Build emsdk
         shell: bash -l {0}
