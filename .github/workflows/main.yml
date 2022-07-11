@@ -54,7 +54,7 @@ jobs:
         shell: bash -l {0}
         run: |
           sudo apt install -y build-essential git
-          conda install -y nodejs ccache f2c pkg-config swig make patch pkg-config texinfo autoconf automake libtool
+          conda install -y nodejs ccache f2c pkg-config swig make patch pkg-config texinfo autoconf automake libtool sqlite3
           pip install -r requirements.txt
 
       - name: Build emsdk
@@ -78,13 +78,13 @@ jobs:
           make -C cpython
           ccache -s
 
-      - name: build Pyodide core + numpy
+      - name: build Pyodide and packages
         shell: bash -l {0}
         run: |
           # This is necessary to use the ccache from emsdk
           source pyodide_env.sh
           ccache -z
-          PYODIDE_PACKAGES="core,numpy" make
+          PYODIDE_PACKAGES="*" make
           ccache -s
 
       - name: check-size
