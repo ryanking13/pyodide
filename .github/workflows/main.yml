@@ -1,10 +1,6 @@
 name: main
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+on: [push, pull_request]
 
 concurrency:
   group: main-${{ github.head_ref }}
