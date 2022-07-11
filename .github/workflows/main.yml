@@ -50,7 +50,7 @@ jobs:
         shell: bash -l {0}
         run: |
           sudo apt install -y build-essential git
-          conda install -y nodejs ccache f2c pkg-config swig make patch pkg-config texinfo autoconf automake libtool sqlite3
+          conda install -y nodejs ccache f2c pkg-config swig make patch pkg-config texinfo autoconf automake libtool sqlite
           pip install -r requirements.txt
 
       - name: Build emsdk
