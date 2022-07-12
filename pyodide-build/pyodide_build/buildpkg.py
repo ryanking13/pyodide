@@ -23,6 +23,8 @@ from types import TracebackType
 from typing import Any, Generator, Iterator, NoReturn, TextIO
 from urllib import request
 
+from packaging.requirements import Requirement
+
 from . import pywasmcross
 from .common import find_matching_wheels
 
@@ -485,6 +487,34 @@ def replace_so_abi_tags(wheel_dir: Path) -> None:
         file.rename(file.with_name(file.name.replace(build_triplet, host_triplet)))
 
 
+def calc_deps(wheel_dir: Path) -> list[Any]:
+    """
+    Calculate the dependencies for the wheel.
+
+    Parameters
+    ----------
+    wheel_dir
+        The path to the wheel directory.
+    """
+    deps = []
+    for file in wheel_dir.glob("**/*.dist-info/METADATA"):
+        with open(file) as fd:
+            for line in fd:
+                if line.startswith("Requires-Dist:"):
+
+                    req = Requirement(line.split(":", 1)[1].strip())
+                    deps.append(
+                        {
+                            "name": req.name,
+                            "version": req.specifier,
+                            "marker": req.marker,
+                            "extras": req.extras,
+                        }
+                    )
+
+    return deps
+
+
 def package_wheel(
     pkg_name: str,
     pkg_root: Path,
@@ -567,6 +597,11 @@ def package_wheel(
     if nmoved:
         with chdir(distdir):
             shutil.make_archive(f"{pkg_name}-tests", "tar", test_dir)
+
+    deps = calc_deps(wheel_dir)
+    for dep in deps:
+        print(dep)
+
     pack_wheel(wheel_dir)
     # wheel_dir causes pytest collection failures for in-tree packages like
     # micropip. To prevent these, we get rid of wheel_dir after repacking the
