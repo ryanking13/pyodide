@@ -19,9 +19,9 @@ jobs:
   build-core:
     runs-on: ubuntu-latest
     env:
-      EMSDK_NUM_CORES: 3
-      EMCC_CORES: 3
-      PYODIDE_JOBS: 3
+      EMSDK_NUM_CORES: 2
+      EMCC_CORES: 2
+      PYODIDE_JOBS: 2
       CCACHE_DIR: /tmp/ccache
 
     steps:
