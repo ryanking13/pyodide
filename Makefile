@@ -22,7 +22,8 @@ all: check \
 	dist/module_test.html \
 	dist/webworker.js \
 	dist/webworker_dev.js \
-	dist/module_webworker_dev.js
+	dist/module_webworker_dev.js \
+	dist/local-file-system-worker.js
 	echo -e "\nSUCCESS!"
 
 dist/pyodide_py.tar: $(wildcard src/py/pyodide/*.py)  $(wildcard src/py/_pyodide/*.py)
@@ -79,6 +80,9 @@ dist/pyodide.js src/js/_pyodide.out.js: src/js/*.ts src/js/pyproxy.gen.ts src/js
 	npx rollup -c src/js/rollup.config.js
 
 dist/package.json : src/js/package.json
+	cp $< $@
+
+dist/local-file-system-worker.js: src/js/local-file-system-worker.js
 	cp $< $@
 
 .PHONY: npm-link

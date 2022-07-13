@@ -60,7 +60,8 @@
     "pyodide*",
     "repodata.json",
     "distutils.tar",
-    "console.html"
+    "console.html",
+    "local-file-system-worker.js"
   ],
   "browser": {
     "child_process": false,
@@ -123,6 +124,7 @@
   "dependencies": {
     "base-64": "^1.0.0",
     "node-fetch": "^2.6.1",
+    "synclink": "^0.1.1",
     "ws": "^8.5.0"
   }
 }

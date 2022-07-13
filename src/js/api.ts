@@ -2,6 +2,7 @@ declare var Module: any;
 declare var Hiwire: any;
 declare var API: any;
 import "./module.ts";
+import * as Synclink from "synclink";
 
 import { loadPackage, loadedPackages } from "./load-package";
 import { isPyProxy, PyBuffer, PyProxy, TypedArray } from "./pyproxy.gen";
@@ -371,6 +372,24 @@ export function unpackArchive(
   });
 }
 
+export async function mountLocal() {
+  const worker = Synclink.wrap(new Worker("local-file-system-worker.js"));
+  let text = (worker as any)
+    .fetch("https://cdn.jsdelivr.net/npm/synclink@0.1.1/dist/esm/synclink.js")
+    .syncify();
+  console.log(text);
+  // if (typeof globalThis.showOpenFilePicker === 'undefined') {
+  //   throw new Error(
+  //     `File System API is not supported in your browser`
+  //   );
+  // }
+
+  // const handle = await showDirectoryPicker();
+  // for await (const entry of handle.values()) {
+  //   console.log(entry.kind, entry.name);
+  // }
+}
+
 /**
  * @private
  */
@@ -441,6 +460,7 @@ export type PyodideInterface = {
   pyimport: typeof pyimport;
   unpackArchive: typeof unpackArchive;
   registerComlink: typeof registerComlink;
+  mountLocal: typeof mountLocal;
   PythonError: typeof PythonError;
   PyBuffer: typeof PyBuffer;
 };
@@ -504,6 +524,7 @@ API.makePublicAPI = function (): PyodideInterface {
     pyimport,
     unpackArchive,
     registerComlink,
+    mountLocal,
     PythonError,
     PyBuffer,
     _module: Module,
