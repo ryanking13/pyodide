@@ -233,10 +233,6 @@ def generate_dependency_graph(
             str(x.name) for x in packages_dir.iterdir() if (x / "meta.yaml").is_file()
         )
 
-    no_numpy_dependents = "no-numpy-dependents" in packages
-    if no_numpy_dependents:
-        packages.discard("no-numpy-dependents")
-
     disabled_packages = set()
     for pkgname in list(packages):
         if pkgname.startswith("!"):
@@ -273,9 +269,6 @@ def generate_dependency_graph(
     for pkgname in TopologicalSorter(graph).static_order():
         pkg = pkg_map[pkgname]
         if pkgname in disabled_packages:
-            pkg.disabled = True
-            continue
-        if no_numpy_dependents and "numpy" in pkg.dependencies:
             pkg.disabled = True
             continue
         for dep in pkg.dependencies:

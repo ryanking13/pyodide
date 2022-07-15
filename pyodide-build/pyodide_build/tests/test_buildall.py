@@ -31,8 +31,6 @@ def test_generate_dependency_graph():
         ({"scipy", "!numpy", "CLAPACK"}, {"CLAPACK"}),
         ({"scikit-learn", "!numpy"}, set()),
         ({"scikit-learn", "scipy", "!joblib"}, {"scipy", "numpy", "CLAPACK"}),
-        ({"scikit-learn", "no-numpy-dependents"}, set()),
-        ({"scikit-learn", "no-numpy-dependents", "numpy"}, {"numpy"}),
     ],
 )
 def test_generate_dependency_graph2(in_set, out_set):
