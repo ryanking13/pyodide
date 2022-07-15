@@ -35,7 +35,7 @@ PACKAGE_CONFIG_SPEC: dict[str, dict[str, Any]] = {
         "cross-build-files": list,  # list[str]
     },
     "requirements": {
-        "run": list,  # List[str],
+        "run": dict,
     },
     "test": {
         "imports": list,  # List[str]

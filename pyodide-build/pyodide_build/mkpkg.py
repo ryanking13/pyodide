@@ -1,118 +1,20 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
 import os
-import shutil
 import subprocess
 import sys
-import urllib.error
-import urllib.request
 import warnings
 from pathlib import Path
-from typing import Any, Literal, NoReturn, TypedDict
+from typing import Literal, NoReturn
 
 from ruamel.yaml import YAML
 
-
-class URLDict(TypedDict):
-    comment_text: str
-    digests: dict[str, Any]
-    downloads: int
-    filename: str
-    has_sig: bool
-    md5_digest: str
-    packagetype: str
-    python_version: str
-    requires_python: str
-    size: int
-    upload_time: str
-    upload_time_iso_8601: str
-    url: str
-    yanked: bool
-    yanked_reason: str | None
-
-
-class MetadataDict(TypedDict):
-    info: dict[str, Any]
-    last_serial: int
-    releases: dict[str, list[dict[str, Any]]]
-    urls: list[URLDict]
-    vulnerabilities: list[Any]
+from .pypi import find_dist, get_metadata
 
 
 class MkpkgFailedException(Exception):
     pass
-
-
-SDIST_EXTENSIONS = tuple(
-    extension
-    for (name, extensions, description) in shutil.get_unpack_formats()
-    for extension in extensions
-)
-
-
-def _find_sdist(pypi_metadata: MetadataDict) -> URLDict | None:
-    """Get sdist file path from the metadata"""
-    # The first one we can use. Usually a .tar.gz
-    for entry in pypi_metadata["urls"]:
-        if entry["packagetype"] == "sdist" and entry["filename"].endswith(
-            SDIST_EXTENSIONS
-        ):
-            return entry
-    return None
-
-
-def _find_wheel(pypi_metadata: MetadataDict) -> URLDict | None:
-    """Get wheel file path from the metadata"""
-    for entry in pypi_metadata["urls"]:
-        if entry["packagetype"] == "bdist_wheel" and entry["filename"].endswith(
-            "py3-none-any.whl"
-        ):
-            return entry
-    return None
-
-
-def _find_dist(
-    pypi_metadata: MetadataDict, source_types: list[Literal["wheel", "sdist"]]
-) -> URLDict:
-    """Find a wheel or sdist, as appropriate.
-
-    source_types controls which types (wheel and/or sdist) are accepted and also
-    the priority order.
-    E.g., ["wheel", "sdist"] means accept either wheel or sdist but prefer wheel.
-    ["sdist", "wheel"] means accept either wheel or sdist but prefer sdist.
-    """
-    result = None
-    for source in source_types:
-        if source == "wheel":
-            result = _find_wheel(pypi_metadata)
-        if source == "sdist":
-            result = _find_sdist(pypi_metadata)
-        if result:
-            return result
-
-    types_str = " or ".join(source_types)
-    name = pypi_metadata["info"].get("name")
-    url = pypi_metadata["info"].get("package_url")
-    raise MkpkgFailedException(f"No {types_str} found for package {name} ({url})")
-
-
-def _get_metadata(package: str, version: str | None = None) -> MetadataDict:
-    """Download metadata for a package from PyPI"""
-    version = ("/" + version) if version is not None else ""
-    url = f"https://pypi.org/pypi/{package}{version}/json"
-
-    try:
-        with urllib.request.urlopen(url) as fd:
-            pypi_metadata = json.load(fd)
-    except urllib.error.HTTPError as e:
-        raise MkpkgFailedException(
-            f"Failed to load metadata for {package}{version} from "
-            f"https://pypi.org/pypi/{package}{version}/json: {e}"
-        )
-
-    return pypi_metadata
 
 
 def run_prettier(meta_path: str | Path) -> None:
@@ -133,14 +35,14 @@ def make_package(
 
     yaml = YAML()
 
-    pypi_metadata = _get_metadata(package, version)
+    pypi_metadata = get_metadata(package, version)
 
     if source_fmt:
         sources = [source_fmt]
     else:
         # Prefer wheel unless sdist is specifically requested.
         sources = ["wheel", "sdist"]
-    dist_metadata = _find_dist(pypi_metadata, sources)
+    dist_metadata = find_dist(pypi_metadata, sources)
 
     url = dist_metadata["url"]
     sha256 = dist_metadata["digests"]["sha256"]
@@ -233,7 +135,7 @@ def update_package(
     else:
         old_fmt = "sdist"
 
-    pypi_metadata = _get_metadata(package, version)
+    pypi_metadata = get_metadata(package, version)
     pypi_ver = pypi_metadata["info"]["version"]
     local_ver = yaml_content["package"]["version"]
     already_up_to_date = pypi_ver <= local_ver and (
@@ -266,7 +168,7 @@ def update_package(
         # prefer sdist to wheel
         sources = ["sdist", "wheel"]
 
-    dist_metadata = _find_dist(pypi_metadata, sources)
+    dist_metadata = find_dist(pypi_metadata, sources)
 
     yaml_content["source"]["url"] = dist_metadata["url"]
     yaml_content["source"].pop("md5", None)

@@ -64,18 +64,11 @@ def find_matching_wheels(wheel_paths: Iterable[Path]) -> Iterator[Path]:
 UNVENDORED_STDLIB_MODULES = {"test", "distutils"}
 
 ALWAYS_PACKAGES = {
-    "pyparsing",
-    "packaging",
     "micropip",
 }
 
 CORE_PACKAGES = {
     "micropip",
-    "pyparsing",
-    "pytz",
-    "packaging",
-    "Jinja2",
-    "regex",
     "fpcast-test",
     "sharedlib-test-py",
     "cpp-exceptions-test",
@@ -103,7 +96,7 @@ def _parse_package_subset(query: str | None) -> set[str]:
 
     Supports following meta-packages,
      - 'core': corresponds to packages needed to run the core test suite
-       {"micropip", "pyparsing", "pytz", "packaging", "Jinja2", "fpcast-test"}. This is the default option
+       {"micropip"}. This is the default option
        if query is None.
      - 'min-scipy-stack': includes the "core" meta-package as well as some of the
        core packages from the scientific python stack and their dependencies:

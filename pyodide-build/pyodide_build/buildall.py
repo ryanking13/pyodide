@@ -12,6 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from functools import total_ordering
 from graphlib import TopologicalSorter
 from pathlib import Path
@@ -21,9 +22,10 @@ from time import perf_counter, sleep
 from typing import Any, Iterable
 
 from . import common
-from .buildpkg import needs_rebuild
+from .buildpkg import download_and_extract, needs_rebuild
 from .common import UNVENDORED_STDLIB_MODULES, find_matching_wheels
 from .io import parse_package_config
+from .pypi import find_wheel, get_metadata
 
 
 class BuildError(Exception):
@@ -44,6 +46,7 @@ class BasePackage:
     library: bool
     shared_library: bool
     dependencies: list[str]
+    dependencies_pypi: dict[str, str]
     unbuilt_dependencies: set[str]
     dependents: set[str]
     unvendored_tests: Path | None = None
@@ -88,6 +91,7 @@ class StdLibPackage(BasePackage):
         self.library = False
         self.shared_library = False
         self.dependencies = []
+        self.dependencies_pypi = {}
         self.unbuilt_dependencies = set()
         self.dependents = set()
         self.install_dir = "lib"
@@ -101,6 +105,51 @@ class StdLibPackage(BasePackage):
 
     def tests_path(self) -> Path | None:
         return None
+
+
+@dataclasses.dataclass
+class PypiPackage(BasePackage):
+    def __init__(self, pkgname: str, version: str):
+        self.meta = {}
+        self.name = pkgname
+        self.version = version
+        self.disabled = False
+        self.library = False
+        self.shared_library = False
+        self.dependencies = []
+        self.dependencies_pypi = {}
+        self.unbuilt_dependencies = set()
+        self.dependents = set()
+        self.install_dir = "site"
+
+        self.temp_install_dir = Path(tempfile.mkdtemp())
+
+    def build(self, outputdir: Path, args: Any) -> None:
+        metadata = get_metadata(self.name, self.version)
+        wheel_metadata = find_wheel(metadata)
+        if wheel_metadata is None:
+            raise RuntimeError(f"No pure python wheel found for {self.name}")
+
+        download_and_extract(
+            self.temp_install_dir, self.temp_install_dir, {"url": wheel_metadata["url"]}
+        )
+
+    def needs_rebuild(self) -> bool:
+        # always download
+        # TODO: cache wheel files?
+        return True
+
+    def wheel_path(self) -> Path:
+        dist_dir = self.temp_install_dir / "dist"
+        wheels = list(find_matching_wheels(dist_dir.glob("*.whl")))
+        if len(wheels) != 1:
+            raise RuntimeError(
+                f"Unexpected number of wheels {len(wheels)} when building {self.name}"
+            )
+        return wheels[0]
+
+    def __del__(self):
+        shutil.rmtree(self.temp_install_dir)
 
 
 @dataclasses.dataclass
@@ -125,7 +174,10 @@ class Package(BasePackage):
 
         assert self.name == pkgdir.stem
 
-        self.dependencies = self.meta["requirements"].get("run", [])
+        self.dependencies = self.meta["requirements"].get("run", {}).get("pyodide", [])
+        self.dependencies_pypi = (
+            self.meta["requirements"].get("run", {}).get("pypi", {})
+        )
         self.unbuilt_dependencies = set(self.dependencies)
         self.dependents = set()
 
@@ -254,18 +306,37 @@ def generate_dependency_graph(
     # On first pass add all dependencies regardless of whether
     # disabled since it might happen because of a transitive dependency
     graph = {}
-    while packages:
-        pkgname = packages.pop()
+
+    packages_queue: set[str | tuple[str, str, str]] = packages.copy()  # type: ignore[assignment]
+    while packages_queue:
+        pkg_ = packages_queue.pop()
+        if isinstance(pkg_, tuple):
+            pkgname, pkgtype, pkgversion = pkg_
+        else:
+            pkgname = pkg_
+            pkgtype = ""
+            pkgversion = ""
 
         if pkgname in UNVENDORED_STDLIB_MODULES:
             pkg = StdLibPackage(packages_dir / pkgname)
+        elif pkgtype == "pypi":
+            pkg = PypiPackage(pkgname, pkgversion)
         else:
             pkg = Package(packages_dir / pkgname)
+
         pkg_map[pkgname] = pkg
         graph[pkgname] = pkg.dependencies
         for dep in pkg.dependencies:
             if pkg_map.get(dep) is None:
-                packages.add(dep)
+                packages_queue.add(dep)
+
+        for pypi_dep_name, pypi_dep_version in pkg.dependencies_pypi.items():
+            if pkg_map.get(pypi_dep_name) is None:
+                packages_queue.add((pypi_dep_name, "pypi", pypi_dep_version))
+            elif pkg_map[pypi_dep_name].version != pypi_dep_version:
+                raise RuntimeError(
+                    f"multiple version of {pypi_dep_name} has requested: {pypi_dep_version} and {pkg_map[pypi_dep_name].version}"
+                )
 
     # Traverse in build order (dependencies first then dependents)
     # Mark a package as disabled if they've either been explicitly disabled
@@ -525,7 +596,9 @@ def generate_packagedata(
             pkg_entry["install_dir"] = "lib" if pkg.cpython_dynlib else "dynlib"
 
         pkg_entry["depends"] = [
-            x.lower() for x in pkg.dependencies if x not in libraries
+            x.lower()
+            for x in pkg.dependencies + list(pkg.dependencies_pypi.keys())
+            if x not in libraries
         ]
         pkg_entry["imports"] = pkg.meta.get("test", {}).get("imports", [name])
 
