@@ -1,19 +1,20 @@
+from pyodide_test_runner import run_in_pyodide
+
+
+# TODO: don't use numpy in this test as it's not necessairly installed.
+@run_in_pyodide(packages=["pytest", "numpy"])
 def test_pytest(selenium):
-    # TODO: don't use numpy in this test as it's not necessairly installed.
-    selenium.load_package(["pytest", "numpy", "nose"])
+    import io
+    from contextlib import redirect_stderr
+    from pathlib import Path
 
-    selenium.run(
-        """
-        from pathlib import Path
-        import os
-        import numpy
-        import pytest
+    import numpy
+    import pytest
 
-        base_dir = Path(numpy.__file__).parent / "core" / "tests"
-        """
-    )
+    base_dir = Path(numpy.__file__).parent / "core" / "tests"
 
-    selenium.run("pytest.main([str(base_dir / 'test_api.py')])")
+    with redirect_stderr(io.StringIO()) as f:
+        pytest.main([str(base_dir / "test_api.py")])
+        log = f.getvalue()
 
-    logs = "\n".join(selenium.logs)
-    assert "INTERNALERROR" not in logs
+    assert "ERROR" not in log
