@@ -12,7 +12,8 @@ build:
     -L$(WASM_LIBRARY_DIR)/lib
 requirements:
   run:
-    - libyaml
+    pyodide:
+      - libyaml
 test:
   imports:
     - yaml

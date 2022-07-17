@@ -27,9 +27,9 @@ build:
     -Wl,--no-entry
 requirements:
   run:
-    - openssl
-    - six
-    - cffi
+    pyodide:
+      - openssl
+      - cffi
 test:
   imports:
     - cryptography

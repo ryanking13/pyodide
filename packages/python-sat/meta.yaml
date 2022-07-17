@@ -16,4 +16,5 @@ test:
 
 requirements:
   run:
-    - six
+    pypi:
+      six: 1.16.0

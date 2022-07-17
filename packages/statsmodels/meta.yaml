@@ -12,12 +12,14 @@ build:
     -L$(NUMPY_LIB)/random/lib/
 requirements:
   run:
-    - distutils
-    - numpy
-    - scipy
-    - pandas
-    - patsy
-    - packaging
+    pyodide:
+      - distutils
+      - numpy
+      - scipy
+      - pandas
+      - patsy
+    pypi:
+      packaging: "21.3"
 
 test:
   imports:

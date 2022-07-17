@@ -6,7 +6,8 @@ source:
   sha256: 31cd396656f3a37834e07d304cdb84d9906bc2172626a3d92fe577d08bcf410f
 requirements:
   run:
-    - numpy # runtime only
+    pyodide:
+      - numpy # runtime only
 build:
   cxxflags: -fexceptions
   ldflags: -fexceptions

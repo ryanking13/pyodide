@@ -8,7 +8,8 @@ source:
 
 requirements:
   run:
-    - zlib
+    pyodide:
+      - zlib
 
 build:
   library: true

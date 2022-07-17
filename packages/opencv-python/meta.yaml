@@ -20,10 +20,11 @@ source:
 
 requirements:
   run:
-    - numpy
-    - ffmpeg
-    - libwebp
-    - libtiff
+    pyodide:
+      - numpy
+      - ffmpeg
+      - libwebp
+      - libtiff
 build:
   # RELOCATABLE flag is required because if affects how emscripten build ports.
   cxxflags: |

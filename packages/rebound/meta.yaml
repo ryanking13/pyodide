@@ -8,7 +8,8 @@ source:
   sha256: b705235c6619b4be5368faaa07a865e6d44f9856b9b31721d1032ebe0f2199ec
 requirements:
   run:
-    - numpy
+    pyodide:
+      - numpy
 test:
   imports:
     - rebound

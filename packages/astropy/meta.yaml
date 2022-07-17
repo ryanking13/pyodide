@@ -11,11 +11,14 @@ build:
   exports: "requested" # Astropy uses dlsym so we need to export more than just PyInit_astropy
 requirements:
   run:
-    - distutils
-    - packaging
-    - numpy
-    - pyerfa
-    - pyyaml
+    pyodide:
+      - distutils
+      - numpy
+      - pyerfa
+      - pyyaml
+    pypi:
+      packaging: "21.3"
+      pyparsing: "3.0.9"
 test:
   imports:
     - astropy

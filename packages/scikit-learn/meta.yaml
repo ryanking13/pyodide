@@ -11,9 +11,11 @@ build:
 
 requirements:
   run:
-    - scipy
-    - joblib
-    - threadpoolctl
+    pyodide:
+      - scipy
+      - joblib
+    pypi:
+      threadpoolctl: 3.1.0
 
 test:
   imports:

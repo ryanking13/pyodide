@@ -9,11 +9,16 @@ build:
     -Wno-implicit-function-declaration
 requirements:
   run:
-    - beautifulsoup4
-    - cssselect
-    - html5lib
-    - libxml
-    - libxslt
+    pyodide:
+      - libxml
+      - libxslt
+    pypi:
+      beautifulsoup4: "4.11.0"
+      cssselect: "1.1.0"
+      html5lib: "1.1"
+      six: 1.16.0
+      webencodings: 0.5.1
+      soupsieve: 2.3.2.post1
 test:
   imports:
     - lxml

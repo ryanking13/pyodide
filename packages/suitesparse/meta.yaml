@@ -10,7 +10,8 @@ source:
 
 requirements:
   run:
-    - CLAPACK
+    pyodide:
+      - CLAPACK
 
 build:
   sharedlibrary: true

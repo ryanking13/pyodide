@@ -6,14 +6,18 @@ source:
   sha256: 13d0e3ccfc2b6e26be000cb6568c832ba67ba32e719443bfe725814d3c42433c
 requirements:
   run:
-    - atomicwrites
-    - attrs
-    - more-itertools
-    - pluggy
-    - py
-    - setuptools
-    - six
-    - iniconfig
+    pyodide:
+      - setuptools
+    pypi:
+      atomicwrites: 1.4.0
+      attrs: 21.4.0
+      iniconfig: 1.1.1
+      more-itertools: 8.13.0
+      pluggy: 1.0.0
+      py: 1.11.0
+      packaging: "21.3"
+      pyparsing: 3.0.9
+      six: 1.16.0
 test:
   imports:
     - pytest

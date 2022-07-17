@@ -12,7 +12,8 @@ source:
 
 requirements:
   run:
-    - numpy
+    pyodide:
+      - numpy
 
 build:
   cxxflags: -std=c++11

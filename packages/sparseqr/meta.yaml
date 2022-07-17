@@ -9,12 +9,13 @@ source:
 
 requirements:
   run:
-    - pycparser
-    - cffi
-    - numpy
-    - scipy
-    - suitesparse
-    - distutils
+    pyodide:
+      - pycparser
+      - cffi
+      - numpy
+      - scipy
+      - suitesparse
+      - distutils
 
 build:
   script: |

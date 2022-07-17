@@ -8,8 +8,10 @@ source:
 
 requirements:
   run:
-    - libproj
-    - certifi
+    pyodide:
+      - libproj
+    pypi:
+      - certifi: 2022.6.15
 
 build:
   script: |

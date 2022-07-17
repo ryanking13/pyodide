@@ -21,9 +21,10 @@ build:
   exports: "whole_archive"
 requirements:
   run:
-    - numpy
-    - scipy
-    - setuptools
+    pyodide:
+      - numpy
+      - scipy
+      - setuptools
 test:
   imports:
     - xgboost

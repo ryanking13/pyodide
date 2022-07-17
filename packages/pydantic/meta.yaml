@@ -9,4 +9,5 @@ test:
     - pydantic
 requirements:
   run:
-    - typing-extensions
+    pypi:
+      typing-extensions: 4.2.0

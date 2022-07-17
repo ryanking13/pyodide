@@ -9,8 +9,10 @@ build:
     find build/setuptools-*/dist -name '*.exe' -delete
 requirements:
   run:
-    - distutils
-    - pyparsing
+    pyodide:
+      - distutils
+    pypi:
+      pyparsing: 3.0.9
 test:
   imports:
     - setuptools

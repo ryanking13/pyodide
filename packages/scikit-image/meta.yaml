@@ -9,15 +9,17 @@ source:
   url: https://files.pythonhosted.org/packages/00/d4/6682033d02917b10a2024dbe5a0636d2338b0799f7bd1885508fb114aec9/scikit-image-0.19.3.tar.gz
 requirements:
   run:
-    - distutils
-    - packaging
-    - numpy
-    - scipy
-    - matplotlib
-    - networkx
-    - Pillow
-    - imageio
-    - pywavelets
+    pyodide:
+      - distutils
+      - numpy
+      - scipy
+      - matplotlib
+      - networkx
+      - Pillow
+      - pywavelets
+    pypi:
+      imageio: 2.19.3
+      packaging: "21.3"
 
 test:
   imports:

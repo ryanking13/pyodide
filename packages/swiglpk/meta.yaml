@@ -13,7 +13,8 @@ build:
 
 requirements:
   run:
-    - glpk
+    pyodide:
+      - glpk
 
 test:
   imports:

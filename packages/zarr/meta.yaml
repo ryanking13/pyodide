@@ -8,9 +8,10 @@ source:
     - patches/fix-zarrsync.patch
 requirements:
   run:
-    - numpy
-    - asciitree
-    - numcodecs
+    pyodide:
+      - numpy
+      - asciitree
+      - numcodecs
 test:
   imports:
     - zarr

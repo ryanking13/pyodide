@@ -6,9 +6,11 @@ source:
   sha256: 560f36eaabe7a989d5583d37ec753dd737357aa6a6453e55c80bb4f92291a69e
 requirements:
   run:
-    - numpy
-    - packaging
-    - pandas
+    pyodide:
+      - numpy
+      - pandas
+    pypi:
+      packaging: "21.3"
 test:
   imports:
     - xarray

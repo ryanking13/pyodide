@@ -14,8 +14,9 @@ build:
     rm numcodecs/blosc.c
 requirements:
   run:
-    - numpy
-    - msgpack
+    pyodide:
+      - numpy
+      - msgpack
 test:
   imports:
     - numcodecs

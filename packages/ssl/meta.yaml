@@ -19,7 +19,8 @@ build:
     emcc Modules/socketmodule.o -o $DISTDIR/socketmodule.so $SIDE_MODULE_LDFLAGS
 requirements:
   run:
-    - openssl
+    pyodide:
+      - openssl
 test:
   imports:
     - ssl

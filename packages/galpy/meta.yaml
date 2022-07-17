@@ -15,13 +15,13 @@ build:
   exports: "requested"
 requirements:
   run:
-    - numpy
-    - scipy
-    - matplotlib
-    - astropy
-    - libgsl
-    - future
-    - setuptools
+    pyodide:
+      - numpy
+      - scipy
+      - matplotlib
+      - astropy
+      - libgsl
+      - setuptools
 test:
   imports:
     - galpy

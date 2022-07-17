@@ -4,7 +4,8 @@ package:
   _tag: pyodide.test
 requirements:
   run:
-    - sharedlib-test
+    pyodide:
+      - sharedlib-test
 source:
   path: src
 build:

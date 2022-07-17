@@ -8,9 +8,10 @@ source:
 
 requirements:
   run:
-    - numpy
-    - pydantic
-    - setuptools
+    pyodide:
+      - numpy
+      - pydantic
+      - setuptools
 
 test:
   imports:

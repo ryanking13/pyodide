@@ -9,5 +9,6 @@ test:
     - autograd
 requirements:
   run:
-    - numpy
-    - future
+    pyodide:
+      - numpy
+      - future

@@ -8,7 +8,8 @@ source:
 
 requirements:
   run:
-    - numpy
+    pyodide:
+      - numpy
 
 test:
   imports:

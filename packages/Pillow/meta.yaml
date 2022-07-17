@@ -23,8 +23,9 @@ build:
 requirements:
   # Pillow will use `pkg-config` to find and link these libraries.
   run:
-    - libwebp
-    - libtiff
+    pyodide:
+      - libwebp
+      - libtiff
 test:
   imports:
     - PIL

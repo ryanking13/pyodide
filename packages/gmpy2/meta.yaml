@@ -8,7 +8,8 @@ source:
 
 requirements:
   run:
-    - libmpc
+    pyodide:
+      - libmpc
 
 build:
   cflags: |

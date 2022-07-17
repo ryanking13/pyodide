@@ -14,11 +14,16 @@ build:
     $(LIBGSL_LIBRARY_PATH)
 requirements:
   run:
-    - numpy
-    - newick
-    - tskit
-    - demes
-    - libgsl
+    pyodide:
+      - numpy
+      -
+      - tskit
+      - libgsl
+    pypi:
+      - demes: 0.2.2
+      - attrs: 21.4.0
+      - ruamel.yaml: 0.17.21
+      - newick: 1.3.2
 test:
   imports:
     - msprime

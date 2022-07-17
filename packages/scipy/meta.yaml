@@ -102,8 +102,9 @@ build:
 
 requirements:
   run:
-    - numpy
-    - CLAPACK
+    pyodide:
+      - numpy
+      - CLAPACK
 
 test:
   imports:

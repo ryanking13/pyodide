@@ -6,9 +6,13 @@ source:
   sha256: 28b07fb7f7b19dadd133ab49938c2a38e1558b1cb76122e57f4d1d1230c383ca
 requirements:
   run:
-    - numpy
-    - svgwrite
-    - jsonschema
+    pyodide:
+      - numpy
+      - pyrsystent
+    pypi:
+      jsonschema: 4.6.0
+      svgwrite: 1.4.2
+      attrs: 21.4.0
 test:
   imports:
     - tskit

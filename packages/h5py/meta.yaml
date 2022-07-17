@@ -10,9 +10,11 @@ source:
 
 requirements:
   run:
-    - numpy
-    - libhdf5
-    - pkgconfig
+    pyodide:
+      - numpy
+      - libhdf5
+    pypi:
+      pkgconfig: 1.5.5
 
 test:
   imports:

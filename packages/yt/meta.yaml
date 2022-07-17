@@ -11,17 +11,18 @@ source:
 
 requirements:
   run:
-    - numpy
-    - matplotlib
-    - sympy
-    - setuptools
-    - packaging
-    - unyt
-    - cmyt
-    - colorspacious
-    - tqdm
-    - tomli
-    - tomli-w
+    pyodide:
+      - numpy
+      - matplotlib
+      - setuptools
+      - unyt
+    pypi:
+      cmyt: 1.0.4
+      colorspacious: 1.1.2
+      tomli: 2.0.1
+      tomli-w: 1.0.0
+      tqdm: 4.64.0
+      more-itertools: 8.13.0
 
 build:
   # The test module is imported from the top level `__init__.py`
