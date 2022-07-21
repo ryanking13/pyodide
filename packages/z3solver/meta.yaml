@@ -1,14 +1,17 @@
 package:
   name: z3solver
-  version: 4.9.1.0
+  version: 4.8.14.0
 source:
-  url: https://files.pythonhosted.org/packages/91/be/d247b751fd779e2e6abb175347cf97893e8606a19deaeab4ed26581b81a0/z3-solver-4.9.1.0.tar.gz
-  sha256: 5ed51c9748a23b6e21af9a526fa21f7ff0a76fd696aff436676300f162e10ddc
+  url: https://files.pythonhosted.org/packages/aa/d6/b46b2fa7966a6183e17aa9ac1ff66d84385cd3e7c9e28d8ef05c6da588f1/z3-solver-4.8.14.0.tar.gz
+  sha256: ded46ac020e319c03bb597433f451679294ae7adba0151b170fed0d4d973abbe
 requirements:
   run:
     - setuptools
+    - z3
 build:
-  exports: whole_archive
+  script: |
+    # z3 wants the RELEASE_DIR to be in a format of: z3-version-arch-os[-osversion]
+    export PACKAGE_FROM_RELEASE=${WASM_LIBRARY_DIR}/z3-4.8.14-dummy-linux
 test:
   imports:
     - z3

@@ -1,0 +1,37 @@
+package:
+  name: z3
+  version: 4.8.14
+
+source:
+  url: https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.8.14.tar.gz
+  sha256: 96a1f49a7701120cc38bfa63c02ff93be4d64c7926cea41977dedec7d87a1364
+
+build:
+  # z3 actually build a shared library, but it will be embedded inside the z3solver python wrapper.
+  # So we set this to a "library".
+  library: true
+  script: |
+    mkdir -p build && cd build
+    CFLAGS="-fPIC" CXXFLAGS="-fPIC" LDFLAGS="${SIDE_MODULE_LDFLAGS}"
+    emcmake cmake \
+      -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR}/z3-${PKG_VERSION}-dummy-linux \
+      -DZ3_SINGLE_THREADED=OFF \
+      -DZ3_BUILD_PYTHON_BINDINGS=ON \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DZ3_BUILD_EXECUTABLE=OFF \
+      -DZ3_BUILD_LIBZ3_SHARED=ON \
+      -DZ3_LINK_TIME_OPTIMIZATION=OFF \
+      -DWARNINGS_AS_ERRORS=SERIOUS_ONLY \
+      -DZ3_USE_LIB_GMP=OFF \
+      -DZ3_INCLUDE_GIT_HASH=OFF \
+      -DZ3_INCLUDE_GIT_DESCRIBE=OFF \
+      -DZ3_SAVE_CLANG_OPTIMIZATION_RECORDS=OFF \
+      -DZ3_ENABLE_TRACING_FOR_NON_DEBUG=OFF \
+      -DZ3_ENABLE_EXAMPLE_TARGETS=OFF \
+      -DZ3_ENABLE_CFI=OFF \
+      -DZ3_BUILD_DOCUMENTATION=OFF \
+      -DZ3_BUILD_TEST_EXECUTABLES=OFF \
+      ..
+
+    emmake make -j ${PYODIDE_JOBS:-3}
+    emmake make install/local
