@@ -8,7 +8,12 @@ requirements:
   run:
     - setuptools
 build:
-  exports: whole_archive
+  cflags: -fPIC -fno-lto  -Wno-unused-but-set-variable
+  cxxflags: -fPIC -fno-lto  -Wno-unused-but-set-variable
+  ldflags: -sSIDE_MODULE=1 -fno-lto
+  script: |
+    export VERBOSE=1
+
 test:
   imports:
     - z3
