@@ -8,9 +8,8 @@ requirements:
   run:
     - setuptools
 build:
-  cflags: -fPIC -fno-lto  -Wno-unused-but-set-variable
-  cxxflags: -fPIC -fno-lto  -Wno-unused-but-set-variable
-  ldflags: -sSIDE_MODULE=1 -fno-lto
+  cxxflags: -sSIDE_MODULE=1
+  ldflags: -sSIDE_MODULE=1
   exports: whole_archive
   script: |
     export VERBOSE=1
