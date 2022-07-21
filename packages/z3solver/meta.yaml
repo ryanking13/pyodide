@@ -11,6 +11,7 @@ build:
   cflags: -fPIC -fno-lto  -Wno-unused-but-set-variable
   cxxflags: -fPIC -fno-lto  -Wno-unused-but-set-variable
   ldflags: -sSIDE_MODULE=1 -fno-lto
+  exports: whole_archive
   script: |
     export VERBOSE=1
 
