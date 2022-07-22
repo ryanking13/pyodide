@@ -213,8 +213,9 @@ def get_library_output(line: list[str]) -> str | None:
     Check if the command is a linker invocation. If so, return the name of the
     output file.
     """
+    pattern = re.compile(r"\.so(.\d+)*$")
     for arg in line:
-        if arg.endswith(".so") and not arg.startswith("-"):
+        if not arg.startswith("-") and pattern.search(arg):
             return arg
     return None
 
