@@ -11,7 +11,7 @@ You can use either Selenium or Playwright to run the pytest suite of tests.
 Install the following dependencies into the default Python installation:
 
 ```bash
-pip install pytest pytest-instafail pytest-httpserver
+pip install pytest-pyodide pytest-httpserver
 ```
 
 There are 3 test locations that are collected by pytest,
@@ -23,12 +23,9 @@ There are 3 test locations that are collected by pytest,
 
 #### Selenium (default)
 
-```
-pip install selenium
-```
-
-Install [geckodriver](https://github.com/mozilla/geckodriver/releases) and
-[chromedriver](https://sites.google.com/a/chromium.org/chromedriver/downloads)
+Install [geckodriver](https://github.com/mozilla/geckodriver/releases),
+[chromedriver](https://sites.google.com/a/chromium.org/chromedriver/downloads) and
+[node >= v14](https://nodejs.org/en/download/)
 and check that they are in your `PATH`.
 
 ### Running the Python test suite
@@ -45,26 +42,25 @@ You can run the tests from a specific file with:
 pytest path/to/test/file.py
 ```
 
-To speed things up you may wish to filter out two of the browsers. Node runs
-tests the fastest so:
+You can use `--runtime, --rt` commandline option to specify which browsers to be used for testing.
+By default, it uses Node (which runs tests the fatest).
+
+runtime can be one of:
+
+- chrome
+- firefox
+- node
+- all (chrome + firefox + node)
+- host (do not run browser tests)
 
 ```bash
-pytest -k "not chrome and not fire"
+pytest --runtime "firefox"
 ```
 
-is often helpful. Some browsers sometimes produce informative errors than others
+Some browsers sometimes produce informative errors than others
 so if you are getting confusing errors it is worth rerunning the test on each
 browser. If you are still confused, try {ref}`manual-testing` which is more
 flexible.
-
-There are 5 test locations that are collected by pytest:
-
-- `src/tests/`: general Pyodide tests and tests running the CPython test suite
-  system.
-- `pyodide-build/pyodide_build/tests/`: tests related to Pyodide build system
-  (do not require selenium to run)
-- `packages/test_common.py`: common tests for packages.
-- `packages/*/test_*`: package specific tests.
 
 #### Running tests with Playwright
 
@@ -74,7 +70,7 @@ with playwright instead as follows.
 First install playwright
 
 ```bash
-pip install playwright && python -m playwright install
+pip install playwright && python -m playwright install --with-deps
 ```
 
 Then use the `--runner` argument to specify to run tests with playwright.
