@@ -41,9 +41,11 @@ dist/pyodide.asm.js: \
 	src/core/python2js.o \
 	src/js/_pyodide.out.js \
 	$(wildcard src/py/lib/*.py) \
+	$(CPYTHONLIB_ZIP) \
 	$(CPYTHONLIB)
 	date +"[%F %T] Building pyodide.asm.js..."
 	[ -d dist ] || mkdir dist
+
 	$(CXX) -o dist/pyodide.asm.js $(filter %.o,$^) \
 		$(MAIN_MODULE_LDFLAGS)
 
@@ -219,6 +221,16 @@ $(CPYTHONLIB): emsdk/emsdk/.complete
 	date +"[%F %T] Building cpython..."
 	make -C $(CPYTHONROOT)
 	date +"[%F %T] done building cpython..."
+
+
+$(CPYTHONLIB_ZIP): $(CPYTHONLIB)
+	cd $(CPYTHONLIB) && \
+	  rm -f $(CPYTHONLIB_ZIP) && \
+	  zip -r -q $(CPYTHONLIB_ZIP) * \
+	  -x "test*" \
+	  -x "*/test/*" \
+	  -x "distutils/*" \
+	  -x "*__pycache__*"
 
 
 dist/repodata.json: FORCE
