@@ -15,12 +15,13 @@ import subprocess
 import sys
 import sysconfig
 import textwrap
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
 from types import TracebackType
-from typing import Any, Generator, Iterator, NoReturn, TextIO
+from typing import Any, NoReturn, TextIO
 from urllib import request
 
 from . import pywasmcross
@@ -209,7 +210,7 @@ def check_checksum(archive: Path, source_metadata: dict[str, Any]) -> None:
             if len(chunk) < CHUNK_SIZE:
                 break
     if h.hexdigest() != checksum:
-        raise ValueError(f"Invalid {checksum_algorithm} checksum")
+        raise ValueError(f"Invalid {checksum_algorithm} checksum: {h.hexdigest()}")
 
 
 def trim_archive_extension(tarballname: str) -> str:

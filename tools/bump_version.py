@@ -8,7 +8,7 @@ import pathlib
 import re
 from ast import Str
 from collections import namedtuple
-from typing import Callable
+from collections.abc import Callable
 
 CORE_VERSION_REGEX = r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
 
@@ -45,8 +45,8 @@ PYTHON_TARGETS = [
         prerelease=True,
     ),
     Target(
-        ROOT / "pyodide-build/setup.cfg",
-        build_version_pattern("version = {python_version}"),
+        ROOT / "pyodide-build/pyodide_build/__init__.py",
+        pattern=build_version_pattern('__version__ = "{python_version}"'),
         prerelease=True,
     ),
     Target(
@@ -62,11 +62,6 @@ PYTHON_TARGETS = [
     Target(
         ROOT / "docs/project/about.md",
         build_version_pattern(r"version\s*=\s*{{{python_version}}}"),
-        prerelease=False,
-    ),
-    Target(
-        ROOT / "pyodide-test-runner/setup.cfg",
-        build_version_pattern("version = {python_version}"),
         prerelease=False,
     ),
 ]
