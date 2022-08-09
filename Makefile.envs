@@ -147,7 +147,7 @@ export MAIN_MODULE_CFLAGS= $(CFLAGS_BASE) \
 
 export STDLIB_MODULE_CFLAGS= $(SIDE_MODULE_CFLAGS) -I Include/ -I .
 
-export PYODIDE_CMAKE_TOOLCHAIN_FILE=$(PYODIDE_ROOT)/tools/cmake/Toolchain.cmake
+export PYODIDE_CMAKE_TOOLCHAIN_FILE=$(PYODIDE_ROOT)/tools/cmake/Pyodide.cmake
 
 # For RUST
 export CARGO_HOME ?= $(HOME)/.cargo
