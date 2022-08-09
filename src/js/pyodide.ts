@@ -71,10 +71,13 @@ function unpackPyodidePy(Module: any, pyodide_py_tar: Uint8Array) {
   );
   Module.FS.close(stream);
   const code_ptr = Module.stringToNewUTF8(`
+import sys
 from sys import version_info
 pyversion = f"python{version_info.major}.{version_info.minor}"
 import shutil
 shutil.unpack_archive("/pyodide_py.tar", f"/lib/{pyversion}/site-packages/")
+sys.path.append(f"/lib/{pyversion}/site-packages")
+del sys
 del shutil
 import importlib
 importlib.invalidate_caches()
