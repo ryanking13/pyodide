@@ -185,18 +185,25 @@ def mock_fetch(monkeypatch, mock_importlib, wheel_base):
     return result
 
 
-@pytest.fixture
-def selenium_standalone_micropip(selenium_standalone):
+@pytest.fixture(scope="function")
+def selenium_standalone_micropip(selenium):
     """Import micropip before entering test so that global initialization of
     micropip doesn't count towards hiwire refcount.
     """
-    selenium_standalone.run_js(
+    selenium.run_js(
         """
         await pyodide.loadPackage("micropip");
         pyodide.runPython("import micropip");
         """
     )
-    yield selenium_standalone
+
+    yield selenium
+
+    selenium.refresh()
+    selenium.load_pyodide()
+    selenium.initialize_pyodide()
+    selenium.save_state()
+    selenium.restore_state()
 
 
 SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
