@@ -101,8 +101,9 @@ def test_import(name: str, selenium: _BrowserBaseRunner) -> None:
         == 0
     )
 
+    selenium.refresh()
     selenium.load_pyodide()
-    selenium.initialize_global_hiwire_objects()
+    selenium.initialize_pyodide()
     selenium.save_state()
     selenium.restore_state()
 
