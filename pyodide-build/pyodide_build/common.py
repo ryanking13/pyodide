@@ -81,6 +81,7 @@ CORE_PACKAGES = {
     "cpp-exceptions-test",
     "_ssl",
     "_lzma",
+    "unicodedata",
     "pytest",
     "tblib",
 }

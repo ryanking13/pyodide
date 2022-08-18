@@ -1,0 +1,17 @@
+package:
+  name: unicodedata
+  version: 1.0.0 # Nonesense
+  _cpython_dynlib: true
+source:
+  path: empty
+build:
+  sharedlibrary: true
+  script: |
+    mkdir dist
+    export DISTDIR=$(pwd)/dist
+    cd $CPYTHONBUILD
+    emcc $STDLIB_MODULE_CFLAGS -DPy_BUILD_CORE -c Modules/unicodedata.c -o Modules/unicodedata.o
+    emcc Modules/unicodedata.o -o $DISTDIR/unicodedata.so $SIDE_MODULE_LDFLAGS
+test:
+  imports:
+    - unicodedata
