@@ -8,6 +8,9 @@ requirements:
   run:
     - cffi
     - libheif
+  host:
+    - cffi
+    - libheif
 build:
   script: |
     sed -i "s@include_dirs = \[@include_dirs = ['\\${WASM_LIBRARY_DIR}/include', @" libheif/libheif_build.py
