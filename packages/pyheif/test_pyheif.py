@@ -17,14 +17,9 @@ def test_read(selenium):
 
         import pyheif
         heif_file = pyheif.read("tree-with-transparency.heic")
-        # assert heif_file.width == 262
-        # assert heif_file.height == 264
-        print(heif_file)
-        print(heif_file.mode)
-        print(heif_file.size)
-        print(heif_file.data)
-        print(heif_file.metadata)
-        print(heif_file.stride)
-        print(heif_file.bit_depth)
+        assert heif_file.mode == "RGBA"
+        assert heif_file.size == (262, 264)
+        assert heif_file.stride == 1056
+        assert heif_file.bit_depth == 8
         """
     )
