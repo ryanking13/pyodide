@@ -7,14 +7,21 @@ source:
   sha256: e70a3335cacacbba0b3a20ec6fecd6783932288ebc8163ad74bcc9606477cae8
 
 build:
-  library: true
+  sharedlibrary: true
   script: |
-    emcmake cmake \
+    mkdir -p dist
+
+    echo "set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)" > SupportSharedLib.cmake
+
+    LDFLAGS="${SIDE_MODULE_LDFLAGS}" emcmake cmake \
       -DCMAKE_C_FLAGS="-fPIC" \
       -DCMAKE_CXX_FLAGS="-fPIC" \
       -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
       -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(pwd)/bin \
-      -DBUILD_SHARED_LIBS=OFF \
+      -DCMAKE_PROJECT_INCLUDE=$(pwd)/SupportSharedLib.cmake \
+      -DBUILD_SHARED_LIBS=ON \
       ./source
     emmake make -j ${PYODIDE_JOBS:-3}
     emmake make install
+
+    cp ${WASM_LIBRARY_DIR}/lib/libx265.so dist/
