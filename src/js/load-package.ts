@@ -284,24 +284,26 @@ async function loadDynlib(lib: string, shared: boolean) {
   const libraryFS = {
     _ldLibraryPaths: ["/usr/lib", API.sitepackages],
     _resolvePath: (path: string) => {
-      console.log("Searching: " + path);
       if (Module.PATH.isAbs(path)) return path;
-      console.log("Not abs: " + path);
 
       for (const dir of libraryFS._ldLibraryPaths) {
         const fullPath = Module.PATH.join2(dir, path);
         if (Module.FS.findObject(fullPath) !== null) {
-          console.log("Found: " + path + " at " + fullPath);
           return fullPath;
         }
-        console.log("Not found: " + path + " at " + fullPath);
       }
-
-      console.log("Failed to found: " + path);
       return path;
     },
-    findObject: (path: string, dontResolveLastLink: boolean) =>
-      Module.FS.findObject(libraryFS._resolvePath(path), dontResolveLastLink),
+    findObject: (path: string, dontResolveLastLink: boolean) => {
+      const obj = Module.FS.findObject(
+        libraryFS._resolvePath(path),
+        dontResolveLastLink
+      );
+      if (obj !== null) {
+        return obj;
+      }
+      throw new Error(`Could not find a shared library: ${path}`);
+    },
     readFile: (path: string) =>
       Module.FS.readFile(libraryFS._resolvePath(path)),
   };
@@ -310,10 +312,21 @@ async function loadDynlib(lib: string, shared: boolean) {
     await Module.loadDynamicLibrary(lib, {
       loadAsync: true,
       nodelete: true,
+      allowUndefined: true,
       global: loadGlobally,
       fs: libraryFS,
     });
   } catch (e: any) {
+    if (e && e.message.includes("Could not find a shared library")) {
+      console.warn(`
+        ${e.message}. Since we download shared libraries in a random order,
+        dependent libraries may not be downloaded yet.
+        Normally this is okay because we load all libraries in the end.
+        If this warning shows and the shared libraries doesn't work correctly,
+        make sure the shared libraries shown in this error message is in the file system.
+      `);
+      return;
+    }
     if (e && e.message && e.message.includes("need to see wasm magic number")) {
       console.warn(
         `Failed to load dynlib ${lib}. We probably just tried to load a linux .so file or something.`
