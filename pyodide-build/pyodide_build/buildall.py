@@ -41,6 +41,7 @@ class BasePackage:
     version: str
     disabled: bool
     cpython_dynlib: bool
+    shared_pkg: bool
     meta: dict[str, Any]
     library: bool
     shared_library: bool
@@ -94,6 +95,7 @@ class Package(BasePackage):
         self.version = self.meta["package"]["version"]
         self.disabled = self.meta["package"].get("_disabled", False)
         self.cpython_dynlib = self.meta["package"].get("_cpython_dynlib", False)
+        self.shared_pkg = self.meta["package"].get("_shared", False)
         self.meta["build"] = self.meta.get("build", {})
         self.meta["requirements"] = self.meta.get("requirements", {})
 
@@ -497,6 +499,16 @@ def generate_packagedata(
         if pkg.shared_library:
             pkg_entry["shared_library"] = True
             pkg_entry["install_dir"] = "lib" if pkg.cpython_dynlib else "dynlib"
+
+        # Q: What does `shared_pkg` mean?
+        # A: If package A requires an `.so` file from package B at load time, it's possible
+        #    that package B is loaded before package A and fails. So we need to make sure
+        #    that package B is loaded before package A. This is done by adding package B
+        #    to the shared library. Since we load all shared libraries before loading any
+        #    Python packages, this ensures that package B is loaded before package A.
+        #    This approach is only bandaids: What if there is a three layer load time dependency?
+        if pkg.shared_pkg:
+            pkg_entry["shared_library"] = True
 
         pkg_entry["depends"] = [
             x.lower() for x in pkg.run_dependencies if x not in libraries

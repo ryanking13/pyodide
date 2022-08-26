@@ -1,6 +1,7 @@
 package:
   name: rebound
   version: 3.19.8
+  _shared: true
 build:
   exports: requested
   post: |

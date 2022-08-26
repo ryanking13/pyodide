@@ -11,6 +11,7 @@ PACKAGE_CONFIG_SPEC: dict[str, dict[str, Any]] = {
         "_tag": str,
         "_disabled": bool,
         "_cpython_dynlib": bool,
+        "_shared": bool,
     },
     "source": {
         "url": str,
