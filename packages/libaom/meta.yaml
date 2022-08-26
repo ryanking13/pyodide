@@ -1,0 +1,33 @@
+package:
+  name: libaom
+  version: 3.4.0
+
+source:
+  url: https://storage.googleapis.com/aom-releases/libaom-3.4.0.tar.gz
+  sha256: bd754b58c3fa69f3ffd29da77de591bd9c26970e3b18537951336d6c0252e354
+
+build:
+  library: true
+  # following https://aomedia.googlesource.com/aom.git#emscripten-builds
+  script: |
+    mkdir -p build
+    cd build && LDFLAGS="${SIDE_MODULE_LDFLAGS}" emcmake cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DAOM_TARGET_CPU=generic \
+        -DENABLE_DOCS=0 \
+        -DENABLE_TESTS=0 \
+        -DENABLE_TOOLS=0 \
+        -DENABLE_EXAMPLES=0 \
+        -DCONFIG_ACCOUNTING=1 \
+        -DCONFIG_INSPECTION=1 \
+        -DCONFIG_MULTITHREAD=0 \
+        -DCONFIG_RUNTIME_CPU_DETECT=0 \
+        -DCONFIG_WEBM_IO=0 \
+        -DCMAKE_C_FLAGS="-fPIC" \
+        -DCMAKE_CXX_FLAGS="-fPIC" \
+        -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
+        -DBUILD_SHARED_LIBS=OFF \
+        ../
+
+    emmake make -j ${PYODIDE_JOBS:-3}
+    emmake make install

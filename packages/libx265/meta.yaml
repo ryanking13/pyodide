@@ -1,5 +1,5 @@
 package:
-  name: x265
+  name: libx265
   version: 1.12.0
 
 source:
@@ -13,6 +13,8 @@ build:
       -DCMAKE_C_FLAGS="-fPIC" \
       -DCMAKE_CXX_FLAGS="-fPIC" \
       -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
+      -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(pwd)/bin \
+      -DBUILD_SHARED_LIBS=OFF \
       ./source
     emmake make -j ${PYODIDE_JOBS:-3}
     emmake make install
