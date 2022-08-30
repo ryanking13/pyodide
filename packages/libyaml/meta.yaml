@@ -12,9 +12,10 @@ build:
     export INSTALL_DIR=${WASM_LIBRARY_DIR}
 
     CFLAGS="-fPIC" emcmake cmake \
-      -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
       -DBUILD_TESTING=OFF \
+      -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
       .
+
     emmake make -j ${PYODIDE_JOBS:-3}
     emmake make install
     rm -f ${INSTALL_DIR}/lib/libyaml.a
