@@ -94,7 +94,7 @@ export LDFLAGS_BASE=\
 
 export CXXFLAGS_BASE=
 
-export SIDE_MODULE_LDFLAGS=	$(LDFLAGS_BASE) -s SIDE_MODULE=1
+export SIDE_MODULE_LDFLAGS=	$(LDFLAGS_BASE) -sSIDE_MODULE=1
 export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-s MAIN_MODULE=1 \
 	-s EXPORT_NAME="'_createPyodideModule'" \
@@ -147,6 +147,9 @@ export MAIN_MODULE_CFLAGS= $(CFLAGS_BASE) \
 	-s EXCEPTION_CATCHING_ALLOWED=['we only want to allow exception handling in side modules']
 
 export STDLIB_MODULE_CFLAGS= $(SIDE_MODULE_CFLAGS) -I Include/ -I . -I Include/internal/
+
+export PYODIDE_CMAKE_MODULES=$(PYODIDE_ROOT)/tools/cmake
+export PYODIDE_CMAKE_TOOLCHAIN_FILE=$(PYODIDE_CMAKE_MODULES)/Platform/Emscripten.cmake
 
 # For RUST
 export CARGO_HOME ?= $(HOME)/.cargo
