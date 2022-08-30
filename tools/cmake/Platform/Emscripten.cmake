@@ -18,10 +18,19 @@ set(EMSCRIPTEN_CMAKE_TOOLCHAIN_FILE "${_emconfig_output}/cmake/Modules/Platform/
 # not a good idea, but we want to inherit all the settings from the Emscripten
 include("${EMSCRIPTEN_CMAKE_TOOLCHAIN_FILE}")
 
+# Allow some of the variables to be overridden by the user by env variable
+if ("${CMAKE_PROJECT_INCLUDE_BEFORE}" STREQUAL "")
+  set(CMAKE_PROJECT_INCLUDE_BEFORE "$ENV{CMAKE_PROJECT_INCLUDE_BEFORE}")
+endif()
+
+if ("${CMAKE_PROJECT_INCLUDE}" STREQUAL "")
+  set(CMAKE_PROJECT_INCLUDE "$ENV{CMAKE_PROJECT_INCLUDE}")
+endif()
+
+# Note that if user sets CMAKE_PROJECT_INCLUDE, they are responsible for
+# setting TARGET_SUPPORTS_SHARED_LIBS.
 if ("${CMAKE_PROJECT_INCLUDE}" STREQUAL "")
   set(CMAKE_PROJECT_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/../SupportSharedLib.cmake")
-else()
-  message(WARNING "CMAKE_PROJECT_INCLUDE is already set to ${CMAKE_PROJECT_INCLUDE}, not setting it to ${CMAKE_CURRENT_LIST_DIR}/../SupportSharedLib.cmake")
 endif()
 
 # We build libraries into WASM_LIBRARY_DIR, so lets tell CMake
@@ -38,4 +47,4 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${SIDE_MODULE_LDFLAG
 set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} ${SIDE_MODULE_LDFLAGS}")
 
 # We don't want SIDE_MODULE=1 for static libraries
-string(REPLACE "-sSIDE_MODULE=1" "" CMAKE_STATIC_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS)
+string(REPLACE "-sSIDE_MODULE=1" "" CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS}")
