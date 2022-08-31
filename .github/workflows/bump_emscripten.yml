@@ -1,0 +1,33 @@
+name: Periodically build on emscripten latest version
+
+on:
+  # At 00:00 on day-of-month 1 and 15.
+  # emsdk release cycle seems to be around 2 weeks
+  schedule:
+    - cron: "0 0 1,15 * *"
+  # Also run on demand
+  workflow_dispatch:
+
+jobs:
+  bump-and-push:
+    # Don't run on forks, unless it's a manual run
+    if: ${{ github.event.repo.name == 'pyodide/pyodide' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+
+      - name: Bump emscripten version
+        run: |
+          BUMP_MESSAGE=$(python tools/bump_emscripten_version.py)
+          git config --local user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "${BUMP_MESSAGE}"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          force: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: emscripten-bump
