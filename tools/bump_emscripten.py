@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import json
 import re
+import sys
 import urllib.request
 from pathlib import Path
 
@@ -43,8 +44,8 @@ def main():
     latest_tag = get_latest_emsdk_tag()
 
     if current_tag == latest_tag:
-        print("Emsdk tags are up to date")
-        exit(1)
+        print("Emsdk tags are up to date", file=sys.stderr)
+        exit()
 
     bump_emsdk_tag(current_tag, latest_tag)
 
