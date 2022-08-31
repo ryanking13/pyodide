@@ -7,11 +7,12 @@ on:
     - cron: "0 0 1,15 * *"
   # Also run on demand
   workflow_dispatch:
+  push:
 
 jobs:
   bump-and-push:
     # Don't run on forks, unless it's a manual run
-    if: ${{ github.event.repo.name == 'pyodide/pyodide' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event.repo.name == 'ryanking13/pyodide' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
