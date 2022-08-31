@@ -1,10 +1,9 @@
 name: Periodically build on emscripten latest version
 
 on:
-  # At 00:00 on day-of-month 1 and 15.
-  # emsdk release cycle seems to be around 2 weeks
+  # Run every week
   schedule:
-    - cron: "0 0 1,15 * *"
+    - cron: "0 0 * * 0"
   # Also run on demand
   workflow_dispatch:
   push:
@@ -19,8 +18,10 @@ jobs:
       - uses: actions/setup-python@v2
 
       - name: Bump emscripten version
+        id: bump-emscripten
         run: |
           BUMP_MESSAGE=$(python tools/bump_emscripten.py)
+          echo "::set-output name=bump_message::$BUMP_MESSAGE"
 
       - name: Check if there are changes
         id: changes
@@ -31,7 +32,7 @@ jobs:
         run: |
           git config --local user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "${BUMP_MESSAGE}"
+          git commit -am "${{ steps.bump-emscripten.outputs.bump_message }}"
 
       - name: Push changes
         if: steps.changes.outputs.changed != 0
