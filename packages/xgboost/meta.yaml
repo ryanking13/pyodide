@@ -16,6 +16,8 @@ build:
   # xgboost uses dlsym so we need to export more than just PyInit_xgboost.
   # We can't currently use "explicit" because there are too many exports.
   exports: "whole_archive"
+  script: |
+    export CMAKE_PROJECT_INCLUDE_BEFORE=$PYODIDE_CMAKE_MODULES/PywasmcrossWrapper.cmake
 requirements:
   run:
     - numpy
