@@ -17,7 +17,7 @@ from __main__ import __file__ as INVOKED_PATH_STR
 
 INVOKED_PATH = Path(INVOKED_PATH_STR)
 
-SYMLINKS = {"cc", "c++", "ld", "ar", "gcc", "gfortran", "cargo"}
+SYMLINKS = {"cc", "c++", "ld", "ar", "gcc", "gfortran", "cargo", "cmake"}
 IS_COMPILER_INVOCATION = INVOKED_PATH.name in SYMLINKS
 
 if IS_COMPILER_INVOCATION:
@@ -359,6 +359,36 @@ def replay_genargs_handle_argument(arg: str) -> str | None:
     return arg
 
 
+def get_cmake_compiler_flags() -> list[str]:
+    """
+    GeneraTe cmake compiler flags.
+
+    emcmake will set these values to emcc, em++, ...
+    but we need to set them to cc, c++, in order to make them pass to pywasmcross.
+
+    Returns
+    -------
+
+    The commandline flags to pass to cmake.
+    """
+    compiler_flags = {
+        "CMAKE_C_COMPILER": "cc",
+        "CMAKE_CXX_COMPILER": "c++",
+        "CMAKE_AR": "ar",
+        "CMAKE_C_COMPILER_AR": "ar",
+        "CMAKE_CXX_COMPILER_AR": "ar",
+    }
+
+    flags = []
+    symlinks_dir = Path(__file__).parent
+    for key, value in compiler_flags.items():
+        assert value in SYMLINKS
+
+        flags.append(f"-D{key}={symlinks_dir / value}")
+
+    return flags
+
+
 def _calculate_object_exports_readobj_parse(output: str) -> list[str]:
     """
     >>> _calculate_object_exports_readobj_parse(
@@ -528,6 +558,10 @@ def handle_command_generate_args(
     """
     if "-print-multiarch" in line:
         return ["echo", "wasm32-emscripten"]
+
+    if len(line) == 2 and line[1] == "-v":
+        return ["emcc", "-v"]
+
     for arg in line:
         if arg.startswith("-print-file-name"):
             return line
@@ -543,6 +577,10 @@ def handle_command_generate_args(
         # distutils doesn't use the c++ compiler when compiling c++ <sigh>
         if any(arg.endswith((".cpp", ".cc")) for arg in line):
             new_args = ["em++"]
+    elif cmd == "cmake":
+        flags = get_cmake_compiler_flags()
+        line[:1] = ["emcmake", "cmake", *flags]
+        return line
     else:
         return line
 
