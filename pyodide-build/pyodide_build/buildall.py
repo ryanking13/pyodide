@@ -189,6 +189,15 @@ def validate_dependencies(pkg_map: dict[str, BasePackage]) -> None:
                     f"{pkg_name} has an invalid dependency: {runtime_dep_name}. Static libraries must be a host dependency."
                 )
 
+        for dep_name in pkg.dependencies:
+            dep = pkg_map[dep_name]
+            if dep.shared_library and not (
+                dep_name in pkg.host_dependencies or dep_name in pkg.run_dependencies
+            ):
+                raise ValueError(
+                    f"{pkg_name} has an invalid dependency: {dep_name}. Shared libraries must be a both host and runtime dependency."
+                )
+
 
 def generate_dependency_graph(
     packages_dir: Path, packages: set[str]
