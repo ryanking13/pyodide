@@ -380,7 +380,7 @@ def get_cmake_compiler_flags() -> list[str]:
     }
 
     flags = []
-    symlinks_dir = Path(__file__).parent
+    symlinks_dir = Path(sys.argv[0]).parent
     for key, value in compiler_flags.items():
         assert value in SYMLINKS
 
