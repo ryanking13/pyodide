@@ -582,14 +582,12 @@ def handle_command_generate_args(
         if any(arg.endswith((".cpp", ".cc")) for arg in line):
             new_args = ["em++"]
     elif cmd == "cmake":
-        flags = get_cmake_compiler_flags()
-        line[:1] = ["emcmake", "cmake", "-DCMAKE_CROSSCOMPILING_EMULATOR=node", *flags]
+        # If it is a build/install command, we don't do anything.
+        if "--build" in line or "--install" in line:
+            return line
 
-        # Some packages append -- (end of option) to the cmake command line.
-        # However, since emcmake may append more flags after the --,
-        # we need to remove the -- from the command line to avoid the error: 'Unknown argument --'
-        # if line[-1] == "--":
-        #     line = line[:-1]
+        flags = get_cmake_compiler_flags()
+        line[:1] = ["emcmake", "cmake", *flags]
 
         return line
     else:
