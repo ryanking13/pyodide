@@ -17,7 +17,18 @@ from __main__ import __file__ as INVOKED_PATH_STR
 
 INVOKED_PATH = Path(INVOKED_PATH_STR)
 
-SYMLINKS = {"cc", "c++", "ld", "ar", "gcc", "gfortran", "cargo", "cmake"}
+SYMLINKS = {
+    "cc",
+    "c++",
+    "ld",
+    "ar",
+    "gcc",
+    "ranlib",
+    "strip",
+    "gfortran",
+    "cargo",
+    "cmake",
+}
 IS_COMPILER_INVOCATION = INVOKED_PATH.name in SYMLINKS
 
 if IS_COMPILER_INVOCATION:
@@ -31,7 +42,7 @@ if IS_COMPILER_INVOCATION:
         raise RuntimeError(
             "Invalid invocation: can't find PYWASMCROSS_ARGS."
             f" Invoked from {INVOKED_PATH}."
-        )
+        ) from None
 
     sys.path = PYWASMCROSS_ARGS.pop("PYTHONPATH")
     os.environ["PATH"] = PYWASMCROSS_ARGS.pop("PATH")
@@ -588,7 +599,11 @@ def handle_command_generate_args(
 
         flags = get_cmake_compiler_flags()
         line[:1] = ["emcmake", "cmake", *flags]
-
+    elif cmd == "ranlib":
+        line[0] = "emranlib"
+        return line
+    elif cmd == "strip":
+        line[0] = "emstrip"
         return line
     else:
         return line

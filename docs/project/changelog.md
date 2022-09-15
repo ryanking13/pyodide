@@ -38,7 +38,7 @@ substitutions:
   be passed as command line arguments to the Python interpreter at start up.
   {pr}`3021`
 
-- {{ Enhancement }} The core test suite is now run in Safari {pr}`2578`.
+- {{ Enhancement }} The full test suite is now run in Safari {pr}`2578` {pr}`3095`.
 
 - {{ Fix }} It works again to use `loadPyodide` with a relative URL as
   `indexURL` (this was a regression in v0.21.2).
@@ -66,6 +66,14 @@ substitutions:
 - {{ Fix }} Source maps are included in the distribution again (reverting
   {pr}`3015` included in 0.21.2) and if there is a variable in top level scope
   called `__dirname` we use that for the `indexURL`.
+
+- {{ Fix }} `loadPyodide` will now raise error when the version of
+  JavaScript and Python Pyodide package does not match.
+  {pr}`3074`
+
+- {{ Fix }} `PyProxy.apply` now correctly handles the case when something
+  unexpected is passed as the second argument.
+  {pr}`3101`
 
 ### Build System / Package Loading
 

@@ -75,7 +75,7 @@ if (globalThis.FinalizationRegistry) {
         // finalizer...
         API.fatal_error(e);
       }
-    }
+    },
   );
   // For some unclear reason this code screws up selenium FirefoxDriver. Works
   // fine in chrome and when I test it in browser. It seems to be sensitive to
@@ -209,18 +209,18 @@ Module.getPyProxyClass = function (flags: number) {
     if (flags & feature_flag) {
       Object.assign(
         descriptors,
-        Object.getOwnPropertyDescriptors(methods.prototype)
+        Object.getOwnPropertyDescriptors(methods.prototype),
       );
     }
   }
   // Use base constructor (just throws an error if construction is attempted).
   descriptors.constructor = Object.getOwnPropertyDescriptor(
     PyProxyClass.prototype,
-    "constructor"
+    "constructor",
   );
   Object.assign(
     descriptors,
-    Object.getOwnPropertyDescriptors({ $$flags: flags })
+    Object.getOwnPropertyDescriptors({ $$flags: flags }),
   );
   let new_proto = Object.create(PyProxyClass.prototype, descriptors);
   function NewPyProxyClass() {}
@@ -291,10 +291,13 @@ Module.pyproxy_destroy = function (proxy: PyProxy, destroyed_msg: string) {
 // Now a lot of boilerplate to wrap the abstract Object protocol wrappers
 // defined in pyproxy.c in JavaScript functions.
 
-Module.callPyObjectKwargs = function (ptrobj: number, ...jsargs: any) {
+Module.callPyObjectKwargs = function (
+  ptrobj: number,
+  jsargs: any,
+  kwargs: any,
+) {
   // We don't do any checking for kwargs, checks are in PyProxy.callKwargs
   // which only is used when the keyword arguments come from the user.
-  let kwargs = jsargs.pop();
   let num_pos_args = jsargs.length;
   let kwargs_names = Object.keys(kwargs);
   let kwargs_values = Object.values(kwargs);
@@ -310,7 +313,7 @@ Module.callPyObjectKwargs = function (ptrobj: number, ...jsargs: any) {
       idargs,
       num_pos_args,
       idkwnames,
-      num_kwargs
+      num_kwargs,
     );
   } catch (e) {
     API.fatal_error(e);
@@ -329,8 +332,8 @@ Module.callPyObjectKwargs = function (ptrobj: number, ...jsargs: any) {
   return result;
 };
 
-Module.callPyObject = function (ptrobj: number, ...jsargs: any) {
-  return Module.callPyObjectKwargs(ptrobj, ...jsargs, {});
+Module.callPyObject = function (ptrobj: number, jsargs: any) {
+  return Module.callPyObjectKwargs(ptrobj, jsargs, {});
 };
 
 export type PyProxy = PyProxyClass & { [x: string]: any };
@@ -448,7 +451,7 @@ export class PyProxyClass {
     default_converter?: (
       obj: PyProxy,
       convert: (obj: PyProxy) => any,
-      cacheConversion: (obj: PyProxy, result: any) => void
+      cacheConversion: (obj: PyProxy, result: any) => void,
     ) => any;
   } = {}): any {
     let ptrobj = _getPtr(this);
@@ -475,7 +478,7 @@ export class PyProxyClass {
         depth,
         proxies_id,
         dict_converter_id,
-        default_converter_id
+        default_converter_id,
       );
     } catch (e) {
       API.fatal_error(e);
@@ -1029,7 +1032,7 @@ export class PyProxyAwaitableMethods {
       errcode = Module.__pyproxy_ensure_future(
         ptrobj,
         resolve_handle_id,
-        reject_handle_id
+        reject_handle_id,
       );
     } catch (e) {
       API.fatal_error(e);
@@ -1066,7 +1069,7 @@ export class PyProxyAwaitableMethods {
    */
   then(
     onFulfilled: (value: any) => any,
-    onRejected: (reason: any) => any
+    onRejected: (reason: any) => any,
   ): Promise<any> {
     let promise = this._ensure_future();
     return promise.then(onFulfilled, onRejected);
@@ -1120,10 +1123,15 @@ export type PyProxyCallable = PyProxy &
 
 export class PyProxyCallableMethods {
   apply(jsthis: PyProxyClass, jsargs: any) {
-    return Module.callPyObject(_getPtr(this), ...jsargs);
+    // Convert jsargs to an array using ordinary .apply in order to match the
+    // behavior of .apply very accurately.
+    jsargs = function (...args: any) {
+      return args;
+    }.apply(undefined, jsargs);
+    return Module.callPyObject(_getPtr(this), jsargs);
   }
   call(jsthis: PyProxyClass, ...jsargs: any) {
-    return Module.callPyObject(_getPtr(this), ...jsargs);
+    return Module.callPyObject(_getPtr(this), jsargs);
   }
   /**
    * Call the function with key word arguments.
@@ -1132,17 +1140,17 @@ export class PyProxyCallableMethods {
   callKwargs(...jsargs: any) {
     if (jsargs.length === 0) {
       throw new TypeError(
-        "callKwargs requires at least one argument (the key word argument object)"
+        "callKwargs requires at least one argument (the key word argument object)",
       );
     }
-    let kwargs = jsargs[jsargs.length - 1];
+    let kwargs = jsargs.pop();
     if (
       kwargs.constructor !== undefined &&
       kwargs.constructor.name !== "Object"
     ) {
       throw new TypeError("kwargs argument is not an object");
     }
-    return Module.callPyObjectKwargs(_getPtr(this), ...jsargs);
+    return Module.callPyObjectKwargs(_getPtr(this), jsargs, kwargs);
   }
 
   /**
@@ -1219,7 +1227,7 @@ export class PyProxyBufferMethods {
     let HEAPU32 = Module.HEAPU32;
     let orig_stack_ptr = Module.stackSave();
     let buffer_struct_ptr = Module.stackAlloc(
-      DEREF_U32(Module._buffer_struct_size, 0)
+      DEREF_U32(Module._buffer_struct_size, 0),
     );
     let this_ptr = _getPtr(this);
     let errcode;
@@ -1256,7 +1264,7 @@ export class PyProxyBufferMethods {
       if (ArrayType === undefined) {
         [ArrayType, bigEndian] = Module.processBufferFormatString(
           format,
-          " In this case, you can pass an explicit type argument."
+          " In this case, you can pass an explicit type argument.",
         );
       }
       let alignment = parseInt(ArrayType.name.replace(/[^0-9]/g, "")) / 8 || 1;
@@ -1267,7 +1275,7 @@ export class PyProxyBufferMethods {
             "For instance, `getBuffer('dataview')` will return a `DataView`" +
             "which has native support for reading big endian data. " +
             "Alternatively, toJs will automatically convert the buffer " +
-            "to little endian."
+            "to little endian.",
         );
       }
       let numBytes = maxByteOffset - minByteOffset;
@@ -1278,7 +1286,7 @@ export class PyProxyBufferMethods {
           maxByteOffset % alignment !== 0)
       ) {
         throw new Error(
-          `Buffer does not have valid alignment for a ${ArrayType.name}`
+          `Buffer does not have valid alignment for a ${ArrayType.name}`,
         );
       }
       let numEntries = numBytes / alignment;
@@ -1310,7 +1318,7 @@ export class PyProxyBufferMethods {
           f_contiguous,
           _view_ptr: view_ptr,
           _released: false,
-        })
+        }),
       );
       // Module.bufferFinalizationRegistry.register(result, view_ptr, result);
       return result;
