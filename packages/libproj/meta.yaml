@@ -30,8 +30,8 @@ build:
         -DBUILD_TESTING=OFF \
         -DTIFF_INCLUDE_DIR=$WASM_LIBRARY_DIR/include \
         -DTIFF_LIBRARY=$WASM_LIBRARY_DIR/lib/libtiff.a \
-        -DCMAKE_C_FLAGS="-fPIC" \
-        -DCMAKE_CXX_FLAGS="-fPIC"
+        -DCMAKE_C_FLAGS="-fPIC -DHAVE_PTHREAD_MUTEX_RECURSIVE=1" \
+        -DCMAKE_CXX_FLAGS="-fPIC -DHAVE_PTHREAD_MUTEX_RECURSIVE=1"
 
     emmake make -j ${PYODIDE_JOBS:-3} install
     cp $WASM_LIBRARY_DIR/lib/libproj.so $DISTDIR/libproj.so
