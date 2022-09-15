@@ -10,6 +10,18 @@ if (NOT _emconfig_result EQUAL 0)
   message(FATAL_ERROR "Failed to find emscripten root directory with command \"em-config EMSCRIPTEN_ROOT\"! Process returned with error code ${_emcache_result}.")
 endif()
 
+# Note: Disable the usage of response file so objects are exposed to the commandline.
+#       Our export calculation logic in pywasmcross needs to read object files.
+set(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 0)
+set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 0)
+set(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 0)
+set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 0)
+
+# Note: this is False in original Emscripten toolchain,
+#       however we always want to allow build shared libs
+#       (See also: https://github.com/emscripten-core/emscripten/pull/16281)
+set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
+
 file(TO_CMAKE_PATH "${_emconfig_output}" _emcache_output)
 set(EMSCRIPTEN_CMAKE_TOOLCHAIN_FILE "${_emconfig_output}/cmake/Modules/Platform/Emscripten.cmake" CACHE FILEPATH "Path to Emscripten CMake toolchain file.")
 
@@ -29,11 +41,11 @@ if ("${CMAKE_PROJECT_INCLUDE}" STREQUAL ""  AND DEFINED ENV{CMAKE_PROJECT_INCLUD
   set(CMAKE_PROJECT_INCLUDE "$ENV{CMAKE_PROJECT_INCLUDE}")
 endif()
 
-# Note that if user sets CMAKE_PROJECT_INCLUDE, they are responsible for
-# setting TARGET_SUPPORTS_SHARED_LIBS.
+# Note that if users set there own CMAKE_PROJECT_INCLUDE file, they are responsible for
+# setting values in ProjectInclude.cmake.
 if ("${CMAKE_PROJECT_INCLUDE}" STREQUAL "")
-  message(STATUS "Set CMAKE_PROJECT_INCLUDE to ${CMAKE_CURRENT_LIST_DIR}/../SupportSharedLib.cmake")
-  set(CMAKE_PROJECT_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/../SupportSharedLib.cmake")
+  message(STATUS "Set CMAKE_PROJECT_INCLUDE to ${CMAKE_CURRENT_LIST_DIR}/../ProjectInclude.cmake")
+  set(CMAKE_PROJECT_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/../ProjectInclude.cmake")
 endif()
 
 # We build libraries into WASM_LIBRARY_DIR, so lets tell CMake
@@ -48,12 +60,3 @@ set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} $ENV{SIDE_MODULE_CFLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{SIDE_MODULE_CXXFLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} $ENV{SIDE_MODULE_LDFLAGS}")
-
-# Note: Disable the usage of response file so objects are exposed to the commandline.
-#       Our export calculation logic in pywasmcross needs to read object files.
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 0)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 0)
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 0)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 0)
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
