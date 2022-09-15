@@ -599,6 +599,7 @@ def handle_command_generate_args(
 
         flags = get_cmake_compiler_flags()
         line[:1] = ["emcmake", "cmake", *flags]
+        return line
     elif cmd == "ranlib":
         line[0] = "emranlib"
         return line
