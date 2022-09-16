@@ -22,6 +22,19 @@ set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 0)
 #       (See also: https://github.com/emscripten-core/emscripten/pull/16281)
 set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
 
+# We build libraries into WASM_LIBRARY_DIR, so lets tell CMake
+# to find libraries from there.
+if (NOT "$ENV{WASM_LIBRARY_DIR}" STREQUAL "")
+  list(APPEND CMAKE_FIND_ROOT_PATH "$ENV{WASM_LIBRARY_DIR}")
+  if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "$ENV{WASM_LIBRARY_DIR}" CACHE PATH
+      "Install path prefix, prepended onto install directories." FORCE)
+    # Prevent original Emscripten toolchain from overriding CMAKE_INSTALL_PREFIX again
+    set(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT FALSE)
+  endif()
+
+endif()
+
 file(TO_CMAKE_PATH "${_emconfig_output}" _emcache_output)
 set(EMSCRIPTEN_CMAKE_TOOLCHAIN_FILE "${_emconfig_output}/cmake/Modules/Platform/Emscripten.cmake" CACHE FILEPATH "Path to Emscripten CMake toolchain file.")
 
@@ -46,14 +59,6 @@ endif()
 if ("${CMAKE_PROJECT_INCLUDE}" STREQUAL "")
   message(STATUS "Set CMAKE_PROJECT_INCLUDE to ${CMAKE_CURRENT_LIST_DIR}/../ProjectInclude.cmake")
   set(CMAKE_PROJECT_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/../ProjectInclude.cmake")
-endif()
-
-# We build libraries into WASM_LIBRARY_DIR, so lets tell CMake
-# to find libraries from there.
-if (NOT "$ENV{WASM_LIBRARY_DIR}" STREQUAL "")
-  list(APPEND CMAKE_FIND_ROOT_PATH "$ENV{WASM_LIBRARY_DIR}")
-  set(CMAKE_INSTALL_PREFIX "$ENV{WASM_LIBRARY_DIR}" CACHE PATH
-    "Install path prefix, prepended onto install directories." FORCE)
 endif()
 
 set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
