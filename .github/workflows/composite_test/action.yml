@@ -8,21 +8,14 @@ inputs:
     description: "pytest cache directory"
     required: false
     default: ""
-  artifacts-prefix:
-    description: "prefix for artifacts"
+  artifacts-prefix-build:
+    description: "prefix for build artifacts"
     required: false
     default: "pyodide"
   retention-days:
     description: "days to keep dist artifacts"
     reqruied: false
     default: 1
-outputs:
-  build-artifacts:
-    description: "build artifacts"
-    value: ${{ steps.random-number-generator.outputs.random-number }}
-  dist-artifacts:
-    description: "dist artifacts"
-    value: ${{ steps.random-number-generator.outputs.random-number }}
 runs:
   using: "composite"
   env:
@@ -36,7 +29,7 @@ runs:
     - name: Download dist artifact
       uses: actions/download-artifact@v2
       with:
-        name: ${{ inputs.artifacts-prefix }}-dist
+        name: ${{ inputs.artifacts-prefix-build }}-dist
         path: ./dist/
 
     - uses: conda-incubator/setup-miniconda@v2

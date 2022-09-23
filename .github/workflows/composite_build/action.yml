@@ -5,21 +5,18 @@ inputs:
     description: "packages to be built"
     required: true
     default: "core"
+  artifacts-prefix-prev:
+    description: "prefix for artifacts for previous build"
+    required: false
+    default: ""
   artifacts-prefix:
-    description: "prefix for artifacts"
+    description: "prefix for artifacts for current build"
     required: false
     default: "pyodide"
   retention-days:
     description: "days to keep dist artifacts"
     reqruied: false
     default: 1
-outputs:
-  build-artifacts:
-    description: "build artifacts"
-    value: ${{ steps.random-number-generator.outputs.random-number }}
-  dist-artifacts:
-    description: "dist artifacts"
-    value: ${{ steps.random-number-generator.outputs.random-number }}
 runs:
   using: "composite"
   steps:
@@ -29,6 +26,13 @@ runs:
         path: |
           /tmp/ccache
         key: ${{ hashFiles('Makefile.envs') }}-v20211025-
+
+    - name: Download build artifact from previous the build step
+      if: ${{ inputs.artifacts-prefix-prev != '' }}
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{ inputs.artifacts-prefix-prev }}-build
+        path: ./
 
     - uses: conda-incubator/setup-miniconda@v2
       with:

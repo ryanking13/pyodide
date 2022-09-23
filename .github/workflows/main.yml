@@ -56,6 +56,7 @@ jobs:
       - uses: ./.github/workflows/composite_build
         with:
           packages: core
+          artifacts-prefix-prev: ""
           artifacts-prefix: core
           retention-days: 1
 
@@ -67,6 +68,7 @@ jobs:
       - uses: ./.github/workflows/composite_build
         with:
           packages: no-numpy-dependents
+          artifacts-prefix-prev: core
           artifacts-prefix: no-numpy-dependents
           retention-days: 1
 
@@ -78,6 +80,7 @@ jobs:
       - uses: ./.github/workflows/composite_build
         with:
           packages: "*"
+          artifacts-prev: no-numpy-dependents
           artifacts-prefix: packages
           retention-days: 1
 
@@ -89,5 +92,5 @@ jobs:
       - uses: ./.github/workflows/composite_build
         with:
           test-params: -k "not webworker" src packages/micropip  packages/fpcast-test packages/sharedlib-test-py/ packages/cpp-exceptions-test/
-          artifacts-prefix: core
+          artifacts-prefix-build: core
           retention-days: 1
