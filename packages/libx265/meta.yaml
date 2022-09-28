@@ -10,17 +10,14 @@ build:
   sharedlibrary: true
   script: |
     mkdir -p dist
-
-    echo "set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)" > SupportSharedLib.cmake
-
     LDFLAGS="${SIDE_MODULE_LDFLAGS}" emcmake cmake \
       -DCMAKE_C_FLAGS="-fPIC" \
       -DCMAKE_CXX_FLAGS="-fPIC" \
       -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
       -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(pwd)/bin \
-      -DCMAKE_PROJECT_INCLUDE=$(pwd)/SupportSharedLib.cmake \
       -DBUILD_SHARED_LIBS=ON \
       ./source
+
     emmake make -j ${PYODIDE_JOBS:-3}
     emmake make install
 

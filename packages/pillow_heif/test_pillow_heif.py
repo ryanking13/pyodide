@@ -46,6 +46,6 @@ def test_pillow(selenium):
 
         im = im.rotate(13)
         print(pillow_heif.libheif_info())
-        # im.save(f"rotated_image.heic", quality=90)
+        im.save(f"rotated_image.heic", quality=90)
         """
     )

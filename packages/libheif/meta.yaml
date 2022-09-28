@@ -19,13 +19,10 @@ build:
   script: |
     # Build options are adapted from https://github.com/strukturag/libheif/blob/v1.12.0/build-emscripten.sh
 
-    echo "set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)" > SupportSharedLib.cmake
-
     # heif_emscripten.h is for building js APIs, but we don't want them.
     sed -i 's@#include "heif_emscripten.h"@@' libheif/heif.cc
 
     LDFLAGS="${SIDE_MODULE_LDFLAGS}" emcmake cmake \
-      -DCMAKE_PROJECT_INCLUDE=SupportSharedLib.cmake \
       -DCMAKE_CXX_FLAGS="-fPIC" \
       -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
       -DWITH_EXAMPLES=OFF \
