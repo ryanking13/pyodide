@@ -1,0 +1,30 @@
+From 399654c20b0fef6152397af2fbe23538efbf0b40 Mon Sep 17 00:00:00 2001
+From: Gyeongjae Choi <def6488@gmail.com>
+Date: Wed, 28 Sep 2022 01:34:09 +0000
+Subject: [PATCH 1/1] Search got entry before looking at global or module
+ symbols
+
+---
+ src/library_dylink.js | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/library_dylink.js b/src/library_dylink.js
+index 526322840..badbc741d 100644
+--- a/src/library_dylink.js
++++ b/src/library_dylink.js
+@@ -598,6 +598,12 @@ var LibraryDylink = {
+             case '__table_base':
+               return tableBase;
+           }
++
++          var rtn = GOT[prop];
++          if (rtn) {
++            return rtn;
++          }
++
+           if (prop in asmLibraryArg) {
+             // No stub needed, symbol already exists in symbol table
+             return asmLibraryArg[prop];
+-- 
+2.37.3
+
