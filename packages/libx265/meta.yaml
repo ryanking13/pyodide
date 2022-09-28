@@ -1,24 +1,23 @@
 package:
   name: libx265
-  version: 1.12.0
+  version: 3.5
 
 source:
   url: https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz
   sha256: e70a3335cacacbba0b3a20ec6fecd6783932288ebc8163ad74bcc9606477cae8
 
 build:
-  sharedlibrary: true
+  library: true
   script: |
-    mkdir -p dist
-    LDFLAGS="${SIDE_MODULE_LDFLAGS}" emcmake cmake \
+    emcmake cmake \
       -DCMAKE_C_FLAGS="-fPIC" \
       -DCMAKE_CXX_FLAGS="-fPIC" \
       -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
       -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(pwd)/bin \
-      -DBUILD_SHARED_LIBS=ON \
+      -DBUILD_SHARED_LIBS=OFF \
+      -DENABLE_SHARED=OFF \
+      -DENABLE_CLI=OFF \
       ./source
 
     emmake make -j ${PYODIDE_JOBS:-3}
     emmake make install
-
-    cp ${WASM_LIBRARY_DIR}/lib/libx265.so dist/
