@@ -1,0 +1,30 @@
+package:
+  name: blis
+  version: 0.9.0
+
+source:
+  sha256: 1135f664be7355427b91025075562805cdc6cc730d3173f83533b2c5dcc2f308
+  url: https://github.com/flame/blis/archive/refs/tags/0.9.0.tar.gz
+
+build:
+  sharedlibrary: true
+  script: |
+
+    sed -i "s@gcc@emcc@" config/generic/make_defs.mk
+
+    mkdir -p dist
+
+    emconfigure ./configure \
+        CFLAGS="-fPIC" \
+        LDFLAGS="${SIDE_MODULE_LDFLAGS}" \
+        --disable-static \
+        --enable-verbose-make \
+        --disable-threading \
+        --disable-system \
+        --prefix=${WASM_LIBRARY_DIR} \
+        generic
+
+    emmake make -j ${PYODIDE_JOBS:-3}
+    emmake make install
+
+    cp ${WASM_LIBRARY_DIR}/lib/libblis.so dist/
