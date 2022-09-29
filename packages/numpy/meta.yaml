@@ -29,10 +29,8 @@ build:
     - numpy/core/lib/libnpymath.a
     - numpy/random/lib/libnpyrandom.a
   script: |
-    export LAPACK=${WASM_LIBRARY_DIR}
-    export BLAS=${WASM_LIBRARY_DIR}
-    export NPY_BLAS_ORDER="blas"
-    export NPY_LAPACK_ORDER="lapack"
+    export NPY_BLAS_LIBS="-I$WASM_LIBRARY_DIR/include -L$WASM_LIBRARY_DIR/lib -lblas"
+    export NPY_LAPACK_LIBS="-I$WASM_LIBRARY_DIR/include -L$WASM_LIBRARY_DIR/lib -llapack"
 about:
   home: https://www.numpy.org
   PyPI: https://pypi.org/project/numpy
