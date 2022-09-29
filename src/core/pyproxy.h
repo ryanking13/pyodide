@@ -13,16 +13,21 @@
 JsRef
 pyproxy_new(PyObject* obj);
 
+/**
+ * Check if x is a PyProxy.
+ *
+ * Fatally fails if x is not NULL or a valid JsRef.
+ */
 int
 pyproxy_Check(JsRef x);
 
 /**
- * Check if x is a PyProxy.
- *
- * Will fatally fail if x is not NULL or a valid JsRef.
+ * If x is a PyProxy, return a borrowed version of the wrapped PyObject. Returns
+ * NULL if x is NULL or a valid JsRef which is not a pyproxy. Fatally fails if x
+ * is not NULL or a valid JsRef.
  */
-int
-pyproxy_Check(JsRef x);
+PyObject*
+pyproxy_AsPyObject(JsRef x);
 
 /**
  * Destroy a list of PyProxies.
@@ -58,7 +63,7 @@ create_promise_handles(PyObject* onfulfilled,
                        JsRef done_callback_id);
 
 int
-pyproxy_init();
+pyproxy_init(PyObject* core);
 
 // These are defined as an enum in Python.h but we want to use them in
 // pyproxy.ts.

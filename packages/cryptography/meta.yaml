@@ -1,22 +1,33 @@
 package:
   name: cryptography
-  version: 3.4.8
-
+  version: 38.0.1
+  top-level:
+    - cryptography
 source:
-  url: https://files.pythonhosted.org/packages/cc/98/8a258ab4787e6f835d350639792527d2eb7946ff9fc0caca9c3f4cf5dcfe/cryptography-3.4.8.tar.gz
-  sha256: 94cc5ed4ceaefcbe5bf38c8fba6a21fc1d365bb8fb826ea1688e3370b2e24a1c
+  url: https://files.pythonhosted.org/packages/6d/0c/5e67831007ba6cd7e52c4095f053cf45c357739b0a7c46a45ddd50049019/cryptography-38.0.1.tar.gz
+  sha256: 1db3d807a14931fa317f96435695d9ec386be7b84b618cc61cfa5d08b0ae33d7
+  patches:
+    - patches/0001-Use-patched-instant.patch
 build:
-  cflags: |
-    -I$(OPEN_SSL_ROOT)/include/
-    -Wno-implicit-function-declaration
-  ldflags: |
-    -L$(OPEN_SSL_ROOT)/dist/
   script: |
-    export CRYPTOGRAPHY_DONT_BUILD_RUST=1
+    export OPENSSL_INCLUDE_PATH=$(pkg-config --cflags-only-I --dont-define-prefix openssl)
+    export OPENSSL_LIBRARY_PATH=$(pkg-config --libs-only-L --dont-define-prefix openssl)
+    source $CARGO_HOME/env
+    # TODO: remove this when instant makes a release
+    git clone --depth 1 https://github.com/hoodmane/instant.git --branch emscripten-no-leading-underscore
+  cflags: |
+    -Wno-implicit-function-declaration
+    $(OPENSSL_INCLUDE_PATH)
+  ldflags: |
+    $(OPENSSL_LIBRARY_PATH)
+    -Wl,--no-entry
 requirements:
   run:
     - openssl
     - six
+    - cffi
+  host:
+    - openssl
     - cffi
 test:
   imports:
@@ -25,3 +36,10 @@ test:
     - cryptography.hazmat
     - cryptography.utils
     - cryptography.x509
+about:
+  home: https://github.com/pyca/cryptography
+  PyPI: https://pypi.org/project/cryptography
+  summary:
+    cryptography is a package which provides cryptographic recipes and primitives
+    to Python developers.
+  license: BSD-3-Clause OR Apache-2.0

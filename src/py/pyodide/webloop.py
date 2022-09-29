@@ -1,14 +1,119 @@
 import asyncio
 import contextvars
+import inspect
 import sys
 import time
 import traceback
-from typing import Callable
+from asyncio import Future
+from collections.abc import Callable
+from typing import Any
 
 from ._core import IN_BROWSER, create_once_callable
 
 if IN_BROWSER:
     from js import setTimeout
+
+
+class PyodideFuture(Future[Any]):
+    """A future with extra then, catch, and finally_ methods based on the
+    Javascript promise API.
+    """
+
+    def then(
+        self,
+        onfulfilled: Callable[[Any], Any] | None,
+        onrejected: Callable[[Exception], Any] | None = None,
+    ) -> "PyodideFuture":
+        """When the Future is done, either execute onfulfilled with the result
+        or execute onrejected with the exception.
+
+        Returns a new Future which will be marked done when either the
+        onfulfilled or onrejected callback is completed. If the return value of
+        the executed callback is awaitable it will be awaited repeatedly until a
+        nonawaitable value is received. The returned Future will be resolved
+        with that value. If an error is raised, the returned Future will be
+        rejected with the error.
+
+        Parameters
+        ----------
+        onfulfilled:
+            A function called if the Future is fulfilled. This function receives
+            one argument, the fulfillment value.
+
+        onrejected:
+            A function called if the Future is rejected. This function receives
+            one argument, the rejection value.
+
+        Returns
+        -------
+        A new future to be resolved when the original future is done and the
+        appropriate callback is also done.
+        """
+        result = PyodideFuture()
+
+        onfulfilled_: Callable[[Any], Any]
+        onrejected_: Callable[[Any], Any]
+        if onfulfilled:
+            onfulfilled_ = onfulfilled
+        else:
+
+            def onfulfilled_(x):
+                return x
+
+        if onrejected:
+            onrejected_ = onrejected
+        else:
+
+            def onrejected_(x):
+                raise x
+
+        async def callback(fut: Future[Any]) -> Any:
+            if fut.exception():
+                val = fut.exception()
+                fun = onrejected_
+            else:
+                fun = onfulfilled_
+                val = fut.result()
+            try:
+                r = fun(val)
+                while inspect.isawaitable(r):
+                    r = await r
+            except Exception as result_exception:
+                result.set_exception(result_exception)
+                return
+            result.set_result(r)
+
+        def wrapper(fut: Future[Any]) -> None:
+            asyncio.ensure_future(callback(fut))
+
+        self.add_done_callback(wrapper)
+        return result
+
+    def catch(self, onrejected: Callable[[Exception], Any] | None) -> "PyodideFuture":
+        return self.then(None, onrejected)
+
+    def finally_(self, onfinally: Callable[[], Any]) -> "PyodideFuture":
+        result = PyodideFuture()
+
+        async def callback(fut: Future[Any]) -> None:
+            exc = fut.exception()
+            try:
+                r = onfinally()
+                while inspect.isawaitable(r):
+                    r = await r
+            except Exception as e:
+                result.set_exception(e)
+                return
+            if exc:
+                result.set_exception(exc)
+            else:
+                result.set_result(fut.result())
+
+        def wrapper(fut: Future[Any]) -> None:
+            asyncio.ensure_future(callback(fut))
+
+        self.add_done_callback(wrapper)
+        return result
 
 
 class WebLoop(asyncio.AbstractEventLoop):
@@ -35,6 +140,10 @@ class WebLoop(asyncio.AbstractEventLoop):
         asyncio._set_running_loop(self)
         self._exception_handler = None
         self._current_handle = None
+        self._in_progress = 0
+        self._no_in_progress_handler = None
+        self._keyboard_interrupt_handler = None
+        self._system_exit_handler = None
 
     def get_debug(self):
         return False
@@ -96,8 +205,11 @@ class WebLoop(asyncio.AbstractEventLoop):
     #
 
     def call_soon(
-        self, callback: Callable, *args, context: contextvars.Context | None = None
-    ):
+        self,
+        callback: Callable[..., Any],
+        *args: Any,
+        context: contextvars.Context | None = None,
+    ) -> asyncio.Handle:
         """Arrange for a callback to be called as soon as possible.
 
         Any positional arguments after the callback will be passed to
@@ -109,21 +221,24 @@ class WebLoop(asyncio.AbstractEventLoop):
         return self.call_later(delay, callback, *args, context=context)
 
     def call_soon_threadsafe(
-        self, callback: Callable, *args, context: contextvars.Context | None = None
-    ):
+        self,
+        callback: Callable[..., Any],
+        *args: Any,
+        context: contextvars.Context | None = None,
+    ) -> asyncio.Handle:
         """Like ``call_soon()``, but thread-safe.
 
         We have no threads so everything is "thread safe", and we just use ``call_soon``.
         """
         return self.call_soon(callback, *args, context=context)
 
-    def call_later(
+    def call_later(  # type: ignore[override]
         self,
         delay: float,
-        callback: Callable,
-        *args,
+        callback: Callable[..., Any],
+        *args: Any,
         context: contextvars.Context | None = None,
-    ):
+    ) -> asyncio.Handle:
         """Arrange for a callback to be called at a given time.
 
         Return a Handle: an opaque object with a cancel() method that
@@ -148,18 +263,34 @@ class WebLoop(asyncio.AbstractEventLoop):
         def run_handle():
             if h.cancelled():
                 return
-            h._run()
+            try:
+                h._run()
+            except SystemExit as e:
+                if self._system_exit_handler:
+                    self._system_exit_handler(e.code)
+                else:
+                    raise
+            except KeyboardInterrupt:
+                if self._keyboard_interrupt_handler:
+                    self._keyboard_interrupt_handler()
+                else:
+                    raise
 
         setTimeout(create_once_callable(run_handle), delay * 1000)
         return h
 
-    def call_at(
+    def _decrement_in_progress(self, *args):
+        self._in_progress -= 1
+        if self._no_in_progress_handler and self._in_progress == 0:
+            self._no_in_progress_handler()
+
+    def call_at(  # type: ignore[override]
         self,
         when: float,
-        callback: Callable,
-        *args,
+        callback: Callable[..., Any],
+        *args: Any,
         context: contextvars.Context | None = None,
-    ):
+    ) -> asyncio.Handle:
         """Like ``call_later()``, but uses an absolute time.
 
         Absolute time corresponds to the event loop's ``time()`` method.
@@ -186,11 +317,18 @@ class WebLoop(asyncio.AbstractEventLoop):
             fut.set_exception(e)
         return fut
 
+    def create_future(self) -> asyncio.Future[Any]:
+        self._in_progress += 1
+        fut = PyodideFuture(loop=self)
+        fut.add_done_callback(self._decrement_in_progress)
+        """Create a Future object attached to the loop."""
+        return fut
+
     #
     # The remaining methods are copied directly from BaseEventLoop
     #
 
-    def time(self):
+    def time(self) -> float:
         """Return the time according to the event loop's clock.
 
         This is a float expressed in seconds since an epoch, but the
@@ -200,13 +338,6 @@ class WebLoop(asyncio.AbstractEventLoop):
         Copied from ``BaseEventLoop.time``
         """
         return time.monotonic()
-
-    def create_future(self):
-        """Create a Future object attached to the loop.
-
-        Copied from ``BaseEventLoop.create_future``
-        """
-        return asyncio.futures.Future(loop=self)
 
     def create_task(self, coro, *, name=None):
         """Schedule a coroutine object.
@@ -227,6 +358,8 @@ class WebLoop(asyncio.AbstractEventLoop):
             task = self._task_factory(self, coro)
             asyncio.tasks._set_task_name(task, name)  # type: ignore[attr-defined]
 
+        self._in_progress += 1
+        task.add_done_callback(self._decrement_in_progress)
         return task
 
     def set_task_factory(self, factory):
@@ -375,8 +508,7 @@ class WebLoop(asyncio.AbstractEventLoop):
                     traceback.print_exc()
 
 
-# Type issue fixed in next release of mypy (0.940)
-class WebLoopPolicy(asyncio.DefaultEventLoopPolicy):  # type: ignore[misc, valid-type]
+class WebLoopPolicy(asyncio.DefaultEventLoopPolicy):
     """
     A simple event loop policy for managing WebLoop based event loops.
     """
@@ -390,14 +522,29 @@ class WebLoopPolicy(asyncio.DefaultEventLoopPolicy):  # type: ignore[misc, valid
             return self._default_loop
         return self.new_event_loop()
 
-    def new_event_loop(self):
+    def new_event_loop(self) -> WebLoop:
         """Create a new event loop"""
         self._default_loop = WebLoop()  # type: ignore[abstract]
         return self._default_loop
 
-    def set_event_loop(self, loop: asyncio.AbstractEventLoop):
+    def set_event_loop(self, loop: Any) -> None:
         """Set the current event loop"""
         self._default_loop = loop
+
+
+def _initialize_event_loop():
+    from ._core import IN_BROWSER
+
+    if not IN_BROWSER:
+        return
+
+    import asyncio
+
+    from .webloop import WebLoopPolicy
+
+    policy = WebLoopPolicy()
+    asyncio.set_event_loop_policy(policy)
+    policy.get_event_loop()
 
 
 __all__ = ["WebLoop", "WebLoopPolicy"]

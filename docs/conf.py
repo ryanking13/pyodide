@@ -11,10 +11,18 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+panels_add_bootstrap_css = False
+
 # -- Project information -----------------------------------------------------
 
 project = "Pyodide"
-copyright = "2019-2021, Pyodide contributors and Mozilla"
+copyright = "2019-2022, Pyodide contributors and Mozilla"
+pyodide_version = "0.22.0.dev0"
+
+if ".dev" in pyodide_version or os.environ.get("READTHEDOCS_VERSION") == "latest":
+    CDN_URL = "https://cdn.jsdelivr.net/pyodide/dev/full/"
+else:
+    CDN_URL = f"https://cdn.jsdelivr.net/pyodide/v{pyodide_version}/full/"
 
 # -- General configuration ---------------------------------------------------
 
@@ -37,6 +45,7 @@ extensions = [
 ]
 
 myst_enable_extensions = ["substitution"]
+
 js_language = "typescript"
 jsdoc_config_path = "../src/js/tsconfig.json"
 root_for_relative_js_paths = "../src/"
@@ -130,7 +139,7 @@ except ImportError:
 IN_READTHEDOCS = "READTHEDOCS" in os.environ
 
 if IN_READTHEDOCS:
-    env = {"PYODIDE_BASE_URL": "https://cdn.jsdelivr.net/pyodide/dev/full/"}
+    env = {"PYODIDE_BASE_URL": CDN_URL}
     os.makedirs("_build/html", exist_ok=True)
     res = subprocess.check_output(
         ["make", "-C", "..", "docs/_build/html/console.html"],
@@ -139,6 +148,21 @@ if IN_READTHEDOCS:
         encoding="utf-8",
     )
     print(res)
+    # insert the Plausible analytics script to console.html
+    console_path = Path("_build/html/console.html")
+    console_html = console_path.read_text().splitlines(keepends=True)
+    for idx, line in enumerate(list(console_html)):
+        if 'pyodide.js">' in line:
+            # insert the analytics script after the `pyodide.js` script
+            console_html.insert(
+                idx,
+                '<script defer data-domain="pyodide.org" src="https://plausible.io/js/plausible.js"></script>\n',
+            )
+            break
+    else:
+        raise ValueError("Could not find pyodide.js in the <head> section")
+    console_path.write_text("".join(console_html))
+
 
 if IN_SPHINX:
     # Compatibility shims. sphinx-js and sphinxcontrib-napoleon have not been updated for Python 3.10
@@ -163,7 +187,9 @@ if IN_SPHINX:
 
     # We hacked it so that autodoc will look for submodules, but only if we import
     # them here. TODO: look these up in the source directory?
+    import pyodide.code
     import pyodide.console
+    import pyodide.ffi.wrappers
     import pyodide.http
     import pyodide.webloop
 
@@ -197,3 +223,19 @@ if IN_SPHINX:
 
     for module in mock_modules:
         sys.modules[module] = mock.Mock()
+
+
+# https://github.com/sphinx-doc/sphinx/issues/4054
+def globalReplace(app, docname, source):
+    result = source[0]
+    for key in app.config.global_replacements:
+        result = result.replace(key, app.config.global_replacements[key])
+    source[0] = result
+
+
+global_replacements = {"{{PYODIDE_CDN_URL}}": CDN_URL}
+
+
+def setup(app):
+    app.add_config_value("global_replacements", {}, True)
+    app.connect("source-read", globalReplace)

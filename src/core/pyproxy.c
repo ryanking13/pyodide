@@ -26,6 +26,17 @@ EM_JS(int, pyproxy_Check, (JsRef x), {
   return API.isPyProxy(val);
 });
 
+EM_JS(PyObject*, pyproxy_AsPyObject, (JsRef x), {
+  if (x == 0) {
+    return 0;
+  }
+  let val = Hiwire.get_value(x);
+  if (!API.isPyProxy(val)) {
+    return 0;
+  }
+  return Module.PyProxy_getPtr(val);
+});
+
 EM_JS(void, destroy_proxies, (JsRef proxies_id, char* msg_ptr), {
   let msg = undefined;
   if (msg_ptr) {
@@ -218,7 +229,6 @@ _pyproxy_type(PyObject* ptrobj)
 int
 _pyproxy_hasattr(PyObject* pyobj, JsRef idkey)
 {
-  bool success = false;
   PyObject* pykey = NULL;
   int result = -1;
 
@@ -226,7 +236,6 @@ _pyproxy_hasattr(PyObject* pyobj, JsRef idkey)
   FAIL_IF_NULL(pykey);
   result = PyObject_HasAttr(pyobj, pykey);
 
-  success = true;
 finally:
   Py_CLEAR(pykey);
   return result;
@@ -778,7 +787,7 @@ size_t py_buffer_shape_offset = offsetof(Py_buffer, shape);
 /**
  * Convert a C array of Py_ssize_t to JavaScript.
  */
-EM_JS_REF(JsRef, array_to_js, (Py_ssize_t * array, int len), {
+EM_JS(JsRef, array_to_js, (Py_ssize_t * array, int len), {
   return Hiwire.new_value(
     Array.from(HEAP32.subarray(array / 4, array / 4 + len)));
 })
@@ -839,7 +848,6 @@ _pyproxy_get_buffer(buffer_struct* target, PyObject* ptrobj)
     return -1;
   }
 
-  bool success = false;
   buffer_struct result = { 0 };
   result.start_ptr = result.smallest_ptr = result.largest_ptr = view.buf;
   result.readonly = view.readonly;
@@ -893,21 +901,12 @@ _pyproxy_get_buffer(buffer_struct* target, PyObject* ptrobj)
   result.f_contiguous = PyBuffer_IsContiguous(&view, 'F');
 
 success:
-  success = true;
-finally:
-  if (success) {
-    // The result.view memory will be freed when (if?) the user calls
-    // Py_Buffer.release().
-    result.view = (Py_buffer*)PyMem_Malloc(sizeof(Py_buffer));
-    *result.view = view;
-    *target = result;
-    return 0;
-  } else {
-    hiwire_CLEAR(result.shape);
-    hiwire_CLEAR(result.strides);
-    PyBuffer_Release(&view);
-    return -1;
-  }
+  // The result.view memory will be freed when (if?) the user calls
+  // Py_Buffer.release().
+  result.view = (Py_buffer*)PyMem_Malloc(sizeof(Py_buffer));
+  *result.view = view;
+  *target = result;
+  return 0;
 }
 
 EM_JS_REF(JsRef, pyproxy_new, (PyObject * ptrobj), {
@@ -929,7 +928,7 @@ EM_JS_REF(JsRef, create_once_callable, (PyObject * obj), {
       throw new Error("OnceProxy can only be called once");
     }
     try {
-      return Module.callPyObject(obj, ... args);
+      return Module.callPyObject(obj, args);
     } finally {
       wrapper.destroy();
     }
@@ -1017,7 +1016,7 @@ EM_JS_REF(JsRef, create_promise_handles, (
     checkUsed();
     try {
       if(handle_result){
-        return Module.callPyObject(handle_result, res);
+        return Module.callPyObject(handle_result, [res]);
       }
     } finally {
       done_callback(res);
@@ -1028,7 +1027,7 @@ EM_JS_REF(JsRef, create_promise_handles, (
     checkUsed();
     try {
       if(handle_exception){
-        return Module.callPyObject(handle_exception, err);
+        return Module.callPyObject(handle_exception, [err]);
       }
     } finally {
       done_callback(undefined);

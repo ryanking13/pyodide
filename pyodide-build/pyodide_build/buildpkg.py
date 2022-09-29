@@ -15,20 +15,22 @@ import subprocess
 import sys
 import sysconfig
 import textwrap
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
 from types import TracebackType
-from typing import Any, NoReturn, TextIO
+from typing import Any, TextIO, cast
 from urllib import request
 
-from . import pywasmcross
-from .common import find_matching_wheels
+from . import common, pywasmcross
+from .common import exit_with_stdio, find_matching_wheels
+from .io import MetaConfig, _BuildSpec, _SourceSpec
 
 
 @contextmanager
-def chdir(new_dir: Path):
+def chdir(new_dir: Path) -> Generator[None, None, None]:
     orig_dir = Path.cwd()
     try:
         os.chdir(new_dir)
@@ -37,11 +39,9 @@ def chdir(new_dir: Path):
         os.chdir(orig_dir)
 
 
-from . import common
-from .io import parse_package_config
-
-
-def _make_whlfile(*args, owner=None, group=None, **kwargs):
+def _make_whlfile(
+    *args: Any, owner: int | None = None, group: int | None = None, **kwargs: Any
+) -> str:
     return shutil._make_zipfile(*args, **kwargs)  # type: ignore[attr-defined]
 
 
@@ -51,16 +51,6 @@ shutil.register_unpack_format(
 )
 
 
-def exit_with_stdio(result: subprocess.CompletedProcess) -> NoReturn:
-    if result.stdout:
-        print("  stdout:")
-        print(textwrap.indent(result.stdout, "    "))
-    if result.stderr:
-        print("  stderr:")
-        print(textwrap.indent(result.stderr, "    "))
-    raise SystemExit(result.returncode)
-
-
 class BashRunnerWithSharedEnvironment:
     """Run multiple bash scripts with persistent environment.
 
@@ -68,7 +58,7 @@ class BashRunnerWithSharedEnvironment:
     directly to adjust the environment, or read to get variables.
     """
 
-    def __init__(self, env=None):
+    def __init__(self, env: dict[str, str] | None = None) -> None:
         if env is None:
             env = dict(os.environ)
 
@@ -81,7 +71,7 @@ class BashRunnerWithSharedEnvironment:
         self._reader = os.fdopen(fd_read, "r")
         return self
 
-    def run(self, cmd, **opts):
+    def run(self, cmd: str, **opts: Any) -> subprocess.CompletedProcess[str]:
         """Run a bash script. Any keyword arguments are passed on to subprocess.run."""
         assert self._fd_write is not None
         assert self._reader is not None
@@ -96,7 +86,11 @@ class BashRunnerWithSharedEnvironment:
         write_env_shell_cmd = f"{sys.executable} -c '{write_env_pycode}'"
         full_cmd = f"{cmd}\n{write_env_shell_cmd}"
         result = subprocess.run(
-            ["bash", "-ce", full_cmd], pass_fds=[self._fd_write], env=self.env, **opts
+            ["bash", "-ce", full_cmd],
+            pass_fds=[self._fd_write],
+            env=self.env,
+            encoding="utf8",
+            **opts,
         )
         if result.returncode != 0:
             print("ERROR: bash command failed")
@@ -123,7 +117,7 @@ class BashRunnerWithSharedEnvironment:
 
 
 @contextmanager
-def get_bash_runner():
+def get_bash_runner() -> Iterator[BashRunnerWithSharedEnvironment]:
     PYODIDE_ROOT = os.environ["PYODIDE_ROOT"]
     env = {
         key: os.environ[key]
@@ -135,28 +129,45 @@ def get_bash_runner():
             "PYTHONINCLUDE",
             "NUMPY_LIB",
             "PYODIDE_PACKAGE_ABI",
+            "HOME",
             "HOSTINSTALLDIR",
+            "TARGETINSTALLDIR",
+            "SYSCONFIG_NAME",
             "HOSTSITEPACKAGES",
             "PYMAJOR",
             "PYMINOR",
             "PYMICRO",
             "CPYTHONBUILD",
+            "CPYTHONLIB",
             "SIDE_MODULE_CFLAGS",
             "SIDE_MODULE_LDFLAGS",
             "STDLIB_MODULE_CFLAGS",
-            "OPEN_SSL_ROOT",
+            "UNISOLATED_PACKAGES",
+            "WASM_LIBRARY_DIR",
+            "WASM_PKG_CONFIG_PATH",
+            "CARGO_BUILD_TARGET",
+            "CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER",
+            "CARGO_HOME",
+            "RUSTFLAGS",
+            "PYO3_CONFIG_FILE",
+            "PYODIDE_CMAKE_TOOLCHAIN_FILE",
         ]
     } | {"PYODIDE": "1"}
     if "PYODIDE_JOBS" in os.environ:
         env["PYODIDE_JOBS"] = os.environ["PYODIDE_JOBS"]
+
+    env["PKG_CONFIG_PATH"] = env["WASM_PKG_CONFIG_PATH"]
+    if "PKG_CONFIG_PATH" in os.environ:
+        env["PKG_CONFIG_PATH"] += f":{os.environ['PKG_CONFIG_PATH']}"
+
+    env["CMAKE_TOOLCHAIN_FILE"] = env["PYODIDE_CMAKE_TOOLCHAIN_FILE"]
+
     with BashRunnerWithSharedEnvironment(env=env) as b:
-        b.run(
-            f"source {PYODIDE_ROOT}/emsdk/emsdk/emsdk_env.sh", stderr=subprocess.DEVNULL
-        )
+        b.run(f"source {PYODIDE_ROOT}/pyodide_env.sh", stderr=subprocess.DEVNULL)
         yield b
 
 
-def check_checksum(archive: Path, source_metadata: dict[str, Any]):
+def check_checksum(archive: Path, source_metadata: _SourceSpec) -> None:
     """
     Checks that an archive matches the checksum in the package metadata.
 
@@ -168,18 +179,11 @@ def check_checksum(archive: Path, source_metadata: dict[str, Any]):
     source_metadata
         The source section from meta.yaml.
     """
-    checksum_keys = {"md5", "sha256"}.intersection(source_metadata)
-    if not checksum_keys:
+    if source_metadata.sha256 is None:
         return
-    elif len(checksum_keys) != 1:
-        raise ValueError(
-            "Only one checksum should be included in a package "
-            "setup; found {}.".format(checksum_keys)
-        )
-    checksum_algorithm = checksum_keys.pop()
-    checksum = source_metadata[checksum_algorithm]
+    checksum = source_metadata.sha256
     CHUNK_SIZE = 1 << 16
-    h = getattr(hashlib, checksum_algorithm)()
+    h = hashlib.sha256()
     with open(archive, "rb") as fd:
         while True:
             chunk = fd.read(CHUNK_SIZE)
@@ -187,10 +191,10 @@ def check_checksum(archive: Path, source_metadata: dict[str, Any]):
             if len(chunk) < CHUNK_SIZE:
                 break
     if h.hexdigest() != checksum:
-        raise ValueError(f"Invalid {checksum_algorithm} checksum")
+        raise ValueError(f"Invalid sha256 checksum: {h.hexdigest()}")
 
 
-def trim_archive_extension(tarballname):
+def trim_archive_extension(tarballname: str) -> str:
     for extension in [
         ".tar.gz",
         ".tgz",
@@ -207,7 +211,9 @@ def trim_archive_extension(tarballname):
     return tarballname
 
 
-def download_and_extract(buildpath: Path, srcpath: Path, src_metadata: dict[str, Any]):
+def download_and_extract(
+    buildpath: Path, srcpath: Path, src_metadata: _SourceSpec
+) -> None:
     """
     Download the source from specified in the meta data, then checksum it, then
     extract the archive into srcpath.
@@ -226,7 +232,9 @@ def download_and_extract(buildpath: Path, srcpath: Path, src_metadata: dict[str,
     src_metadata
         The source section from meta.yaml.
     """
-    response = request.urlopen(src_metadata["url"])
+    # We only call this function when the URL is defined
+    url = cast(str, src_metadata.url)
+    response = request.urlopen(url)
     _, parameters = cgi.parse_header(response.headers.get("Content-Disposition", ""))
     if "filename" in parameters:
         tarballname = parameters["filename"]
@@ -252,16 +260,16 @@ def download_and_extract(buildpath: Path, srcpath: Path, src_metadata: dict[str,
     if not srcpath.is_dir():
         shutil.unpack_archive(tarballpath, buildpath)
 
-    extract_dir_name = src_metadata.get("extract_dir")
-    if not extract_dir_name:
+    extract_dir_name = src_metadata.extract_dir
+    if extract_dir_name is None:
         extract_dir_name = trim_archive_extension(tarballname)
 
     shutil.move(buildpath / extract_dir_name, srcpath)
 
 
 def prepare_source(
-    pkg_root: Path, buildpath: Path, srcpath: Path, src_metadata: dict[str, Any]
-):
+    pkg_root: Path, buildpath: Path, srcpath: Path, src_metadata: _SourceSpec
+) -> None:
     """
     Figure out from the "source" key in the package metadata where to get the source
     from, then get the source into srcpath (or somewhere else, if it goes somewhere
@@ -286,21 +294,21 @@ def prepare_source(
 
     Returns
     -------
-        The location where the source ended up.
+        The location where the source ended up. TODO: None, actually?
     """
     if buildpath.resolve().is_dir():
         shutil.rmtree(buildpath)
     os.makedirs(buildpath)
 
-    if "url" in src_metadata:
+    if src_metadata.url is not None:
         download_and_extract(buildpath, srcpath, src_metadata)
         return
-    if "path" not in src_metadata:
+    if src_metadata.path is None:
         raise ValueError(
             "Incorrect source provided. Either a url or a path must be provided."
         )
 
-    srcdir = Path(src_metadata["path"]).resolve()
+    srcdir = src_metadata.path.resolve()
 
     if not srcdir.is_dir():
         raise ValueError(f"path={srcdir} must point to a directory that exists")
@@ -308,7 +316,7 @@ def prepare_source(
     shutil.copytree(srcdir, srcpath)
 
 
-def patch(pkg_root: Path, srcpath: Path, src_metadata: dict[str, Any]):
+def patch(pkg_root: Path, srcpath: Path, src_metadata: _SourceSpec) -> None:
     """
     Apply patches to the source.
 
@@ -329,14 +337,14 @@ def patch(pkg_root: Path, srcpath: Path, src_metadata: dict[str, Any]):
     if (srcpath / ".patched").is_file():
         return
 
-    patches = src_metadata.get("patches", [])
-    extras = src_metadata.get("extras", [])
+    patches = src_metadata.patches
+    extras = src_metadata.extras
     if not patches and not extras:
         return
 
     # We checked these in check_package_config.
-    assert "url" in src_metadata
-    assert not src_metadata["url"].endswith(".whl")
+    assert src_metadata.url is not None
+    assert not src_metadata.url.endswith(".whl")
 
     # Apply all the patches
     with chdir(srcpath):
@@ -344,6 +352,7 @@ def patch(pkg_root: Path, srcpath: Path, src_metadata: dict[str, Any]):
             result = subprocess.run(
                 ["patch", "-p1", "--binary", "--verbose", "-i", pkg_root / patch],
                 check=False,
+                encoding="utf-8",
             )
             if result.returncode != 0:
                 print(f"ERROR: Patch {pkg_root/patch} failed")
@@ -357,20 +366,24 @@ def patch(pkg_root: Path, srcpath: Path, src_metadata: dict[str, Any]):
         fd.write(b"\n")
 
 
-def unpack_wheel(path):
+def unpack_wheel(path: Path) -> None:
     with chdir(path.parent):
         result = subprocess.run(
-            [sys.executable, "-m", "wheel", "unpack", path.name], check=False
+            [sys.executable, "-m", "wheel", "unpack", path.name],
+            check=False,
+            encoding="utf-8",
         )
         if result.returncode != 0:
             print(f"ERROR: Unpacking wheel {path.name} failed")
             exit_with_stdio(result)
 
 
-def pack_wheel(path):
+def pack_wheel(path: Path) -> None:
     with chdir(path.parent):
         result = subprocess.run(
-            [sys.executable, "-m", "wheel", "pack", path.name], check=False
+            [sys.executable, "-m", "wheel", "pack", path.name],
+            check=False,
+            encoding="utf-8",
         )
         if result.returncode != 0:
             print(f"ERROR: Packing wheel {path} failed")
@@ -380,12 +393,11 @@ def pack_wheel(path):
 def compile(
     name: str,
     srcpath: Path,
-    build_metadata: dict[str, Any],
+    build_metadata: _BuildSpec,
     bash_runner: BashRunnerWithSharedEnvironment,
     *,
     target_install_dir: str,
-    host_install_dir: str,
-):
+) -> None:
     """
     Runs pywasmcross for the package. The effect of this is to first run setup.py
     with compiler wrappers subbed in, which don't actually build the package but
@@ -413,30 +425,40 @@ def compile(
     target_install_dir
         The path to the target Python installation
 
-    host_install_dir
-        Directory for installing built host packages. Defaults to setup.py
-        default. Set to 'skip' to skip installation. Installation is
-        needed if you want to build other packages that depend on this one.
     """
     # This function runs setup.py. library and sharedlibrary don't have setup.py
-    if build_metadata.get("sharedlibrary"):
+    if build_metadata.sharedlibrary:
         return
 
-    replace_libs = ";".join(build_metadata.get("replace-libs", []))
-    with chdir(srcpath):
-        pywasmcross.compile(
-            env=bash_runner.env,
-            pkgname=name,
-            cflags=build_metadata["cflags"],
-            cxxflags=build_metadata["cxxflags"],
-            ldflags=build_metadata["ldflags"],
-            host_install_dir=host_install_dir,
-            target_install_dir=target_install_dir,
-            replace_libs=replace_libs,
-        )
+    build_env_ctx = pywasmcross.get_build_env(
+        env=bash_runner.env,
+        pkgname=name,
+        cflags=build_metadata.cflags,
+        cxxflags=build_metadata.cxxflags,
+        ldflags=build_metadata.ldflags,
+        target_install_dir=target_install_dir,
+        exports=build_metadata.exports,
+    )
+    backend_flags = build_metadata.backend_flags
+
+    with chdir(srcpath), build_env_ctx as build_env:
+        if build_metadata.cross_script is not None:
+            with BashRunnerWithSharedEnvironment(build_env) as runner:
+                runner.run(build_metadata.cross_script)
+                build_env = runner.env
+
+        from .pypabuild import build
+
+        try:
+            build(build_env, backend_flags)
+        except BaseException:
+            build_log_path = Path("build.log")
+            if build_log_path.exists():
+                build_log_path.unlink()
+            raise
 
 
-def replace_so_abi_tags(wheel_dir: Path):
+def replace_so_abi_tags(wheel_dir: Path) -> None:
     """Replace native abi tag with emscripten abi tag in .so file names"""
     build_soabi = sysconfig.get_config_var("SOABI")
     assert build_soabi
@@ -452,9 +474,10 @@ def package_wheel(
     pkg_name: str,
     pkg_root: Path,
     srcpath: Path,
-    build_metadata: dict[str, Any],
+    build_metadata: _BuildSpec,
     bash_runner: BashRunnerWithSharedEnvironment,
-):
+    host_install_dir: str,
+) -> None:
     """Package a wheel
 
     This unpacks the wheel, unvendors tests if necessary, runs and "build.post"
@@ -481,7 +504,7 @@ def package_wheel(
         The runner we will use to execute our bash commands. Preserves
         environment variables from one invocation to the next.
     """
-    if build_metadata.get("sharedlibrary"):
+    if build_metadata.sharedlibrary:
         return
 
     distdir = srcpath / "dist"
@@ -490,6 +513,7 @@ def package_wheel(
         raise Exception(
             f"Unexpected number of wheels {len(rest) + 1} when building {pkg_name}"
         )
+    print(f"Unpacking wheel to {str(wheel)}")
     unpack_wheel(wheel)
     wheel.unlink()
     name, ver, _ = wheel.name.split("-", 2)
@@ -500,17 +524,30 @@ def package_wheel(
     # to maximize sanity.
     replace_so_abi_tags(wheel_dir)
 
-    post = build_metadata.get("post")
+    post = build_metadata.post
     if post:
-        bash_runner.env.update({"PKGDIR": str(pkg_root)})
+        print("Running post script in ", str(Path.cwd().absolute()))
+        bash_runner.env.update({"WHEELDIR": str(wheel_dir)})
         result = bash_runner.run(post)
         if result.returncode != 0:
             print("ERROR: post failed")
             exit_with_stdio(result)
 
+    python_dir = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    host_site_packages = Path(host_install_dir) / f"lib/{python_dir}/site-packages"
+    if build_metadata.cross_build_env:
+        subprocess.check_call(
+            ["pip", "install", "-t", str(host_site_packages), f"{name}=={ver}"]
+        )
+
+    cross_build_files = build_metadata.cross_build_files
+    if cross_build_files:
+        for file_ in cross_build_files:
+            shutil.copy((wheel_dir / file_), host_site_packages / file_)
+
     test_dir = distdir / "tests"
     nmoved = 0
-    if build_metadata.get("unvendor-tests", True):
+    if build_metadata.unvendor_tests:
         nmoved = unvendor_tests(wheel_dir, test_dir)
     if nmoved:
         with chdir(distdir):
@@ -573,16 +610,16 @@ def unvendor_tests(install_prefix: Path, test_install_prefix: Path) -> int:
     return n_moved
 
 
-def create_packaged_token(buildpath: Path):
+def create_packaged_token(buildpath: Path) -> None:
     (buildpath / ".packaged").write_text("\n")
 
 
 def run_script(
     buildpath: Path,
     srcpath: Path,
-    build_metadata: dict[str, Any],
+    build_metadata: _BuildSpec,
     bash_runner: BashRunnerWithSharedEnvironment,
-):
+) -> None:
     """
     Run the build script indicated in meta.yaml
 
@@ -602,7 +639,7 @@ def run_script(
         The runner we will use to execute our bash commands. Preserves environment
         variables from one invocation to the next.
     """
-    script = build_metadata.get("script")
+    script = build_metadata.script
     if not script:
         return
 
@@ -614,7 +651,7 @@ def run_script(
 
 
 def needs_rebuild(
-    pkg_root: Path, buildpath: Path, source_metadata: dict[str, Any]
+    pkg_root: Path, buildpath: Path, source_metadata: _SourceSpec
 ) -> bool:
     """
     Determines if a package needs a rebuild because its meta.yaml, patches, or
@@ -637,16 +674,11 @@ def needs_rebuild(
 
     package_time = packaged_token.stat().st_mtime
 
-    def source_files():
+    def source_files() -> Iterator[Path]:
         yield pkg_root / "meta.yaml"
-        yield from (
-            pkg_root / patch_path for patch_path in source_metadata.get("patches", [])
-        )
-        yield from (
-            pkg_root / patch_path
-            for [patch_path, _] in source_metadata.get("extras", [])
-        )
-        src_path = source_metadata.get("path")
+        yield from (pkg_root / patch_path for patch_path in source_metadata.patches)
+        yield from (pkg_root / patch_path for [patch_path, _] in source_metadata.extras)
+        src_path = source_metadata.path
         if src_path:
             yield from (pkg_root / src_path).resolve().glob("**/*")
 
@@ -659,13 +691,13 @@ def needs_rebuild(
 
 def build_package(
     pkg_root: Path,
-    pkg: dict[str, Any],
+    pkg: MetaConfig,
     *,
     target_install_dir: str,
     host_install_dir: str,
     force_rebuild: bool,
     continue_: bool,
-):
+) -> None:
     """
     Build the package. The main entrypoint in this module.
 
@@ -682,28 +714,26 @@ def build_package(
     host_install_dir
         Directory for installing built host packages.
     """
-    pkg_metadata = pkg["package"]
-    source_metadata = pkg["source"]
-    build_metadata = pkg["build"]
-    name = pkg_metadata["name"]
-    version = pkg_metadata["version"]
+    source_metadata = pkg.source
+    build_metadata = pkg.build
+    name = pkg.package.name
+    version = pkg.package.version
     build_dir = pkg_root / "build"
     src_dir_name: str = f"{name}-{version}"
     srcpath = build_dir / src_dir_name
 
-    url = source_metadata.get("url")
+    url = source_metadata.url
     finished_wheel = url and url.endswith(".whl")
-    script = build_metadata.get("script")
-    library = build_metadata.get("library", False)
-    sharedlibrary = build_metadata.get("sharedlibrary", False)
-    post = build_metadata.get("post")
+    library = build_metadata.library
+    sharedlibrary = build_metadata.sharedlibrary
+    post = build_metadata.post
 
     # These are validated in io.check_package_config
     # If any of these assertions fail, the code path through here might get a
     # bit weird
     assert not (library and sharedlibrary)
     if finished_wheel:
-        assert not script
+        assert not build_metadata.script
         assert not library
         assert not sharedlibrary
     if post:
@@ -730,6 +760,7 @@ def build_package(
     os.dup2(tee.stdin.fileno(), sys.stderr.fileno())  # type: ignore[union-attr]
 
     with chdir(pkg_root), get_bash_runner() as bash_runner:
+        bash_runner.env["PKGDIR"] = str(pkg_root)
         bash_runner.env["PKG_VERSION"] = version
         bash_runner.env["PKG_BUILD_DIR"] = str(srcpath)
         if not continue_:
@@ -749,15 +780,10 @@ def build_package(
                 build_metadata,
                 bash_runner,
                 target_install_dir=target_install_dir,
-                host_install_dir=host_install_dir,
             )
         if not sharedlibrary:
             package_wheel(
-                name,
-                pkg_root,
-                srcpath,
-                build_metadata,
-                bash_runner,
+                name, pkg_root, srcpath, build_metadata, bash_runner, host_install_dir
             )
 
         shutil.rmtree(pkg_root / "dist", ignore_errors=True)
@@ -769,7 +795,7 @@ def build_package(
         create_packaged_token(build_dir)
 
 
-def make_parser(parser: argparse.ArgumentParser):
+def make_parser(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.description = (
         "Build a pyodide package.\n\n"
         "Note: this is a private endpoint that should not be used "
@@ -839,7 +865,7 @@ def make_parser(parser: argparse.ArgumentParser):
     return parser
 
 
-def main(args):
+def main(args: argparse.Namespace) -> None:
     continue_ = not not args.continue_
     # --continue implies --force-rebuild
     force_rebuild = args.force_rebuild or continue_
@@ -847,20 +873,13 @@ def main(args):
     meta_file = Path(args.package[0]).resolve()
 
     pkg_root = meta_file.parent
-    pkg = parse_package_config(meta_file)
+    pkg = MetaConfig.from_yaml(meta_file)
 
-    pkg["source"] = pkg.get("source", {})
-    pkg["build"] = pkg.get("build", {})
-    build_metadata = pkg["build"]
-    build_metadata["cflags"] = build_metadata.get("cflags", "")
-    build_metadata["cxxflags"] = build_metadata.get("cxxflags", "")
-    build_metadata["ldflags"] = build_metadata.get("ldflags", "")
+    pkg.build.cflags += f" {args.cflags}"
+    pkg.build.cxxflags += f" {args.cxxflags}"
+    pkg.build.ldflags += f" {args.ldflags}"
 
-    build_metadata["cflags"] += f" {args.cflags}"
-    build_metadata["cxxflags"] += f" {args.cxxflags}"
-    build_metadata["ldflags"] += f" {args.ldflags}"
-
-    name = pkg["package"]["name"]
+    name = pkg.package.name
     t0 = datetime.now()
     print("[{}] Building package {}...".format(t0.strftime("%Y-%m-%d %H:%M:%S"), name))
     success = True

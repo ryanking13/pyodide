@@ -1,52 +1,52 @@
 declare var Module: any;
 declare var Tests: any;
 declare var API: any;
+declare var DEBUG: boolean;
 
 import {
   IN_NODE,
   nodeFsPromisesMod,
-  _loadBinaryFile,
+  loadBinaryFile,
   initNodeModules,
+  resolvePath,
 } from "./compat.js";
 import { PyProxy, isPyProxy } from "./pyproxy.gen";
 
-/** @private */
-let baseURL: string;
 /**
  * Initialize the packages index. This is called as early as possible in
- * loadPyodide so that fetching packages.json can occur in parallel with other
+ * loadPyodide so that fetching repodata.json can occur in parallel with other
  * operations.
- * @param indexURL
+ * @param lockFileURL
  * @private
  */
-export async function initializePackageIndex(indexURL: string) {
-  baseURL = indexURL;
-  let package_json;
+async function initializePackageIndex(lockFileURL: string) {
+  let repodata;
   if (IN_NODE) {
     await initNodeModules();
-    const package_string = await nodeFsPromisesMod.readFile(
-      `${indexURL}packages.json`
-    );
-    package_json = JSON.parse(package_string);
+    const package_string = await nodeFsPromisesMod.readFile(lockFileURL);
+    repodata = JSON.parse(package_string);
   } else {
-    let response = await fetch(`${indexURL}packages.json`);
-    package_json = await response.json();
+    let response = await fetch(lockFileURL);
+    repodata = await response.json();
   }
-  if (!package_json.packages) {
+  if (!repodata.packages) {
     throw new Error(
-      "Loaded packages.json does not contain the expected key 'packages'."
+      "Loaded repodata.json does not contain the expected key 'packages'.",
     );
   }
-  API.packages = package_json.packages;
+  API.repodata_info = repodata.info;
+  API.repodata_packages = repodata.packages;
 
   // compute the inverted index for imports to package names
   API._import_name_to_package_name = new Map();
-  for (let name of Object.keys(API.packages)) {
-    for (let import_name of API.packages[name].imports) {
+  for (let name of Object.keys(API.repodata_packages)) {
+    for (let import_name of API.repodata_packages[name].imports) {
       API._import_name_to_package_name.set(import_name, name);
     }
   }
 }
+
+API.packageIndexReady = initializePackageIndex(API.config.lockFileURL);
 
 /**
  * Only used in Node. If we can't find a package in node_modules, we'll use this
@@ -74,32 +74,61 @@ function _uri_to_package_name(package_uri: string): string | undefined {
   }
 }
 
+type PackageLoadMetadata = {
+  name: string;
+  channel: string;
+  depends: string[];
+  done: ResolvablePromise;
+  installPromise?: Promise<void>;
+};
+
+interface ResolvablePromise extends Promise<void> {
+  resolve: (value?: any) => void;
+  reject: (err?: Error) => void;
+}
+
+function createDonePromise(): ResolvablePromise {
+  let _resolve: (value: any) => void = () => {};
+  let _reject: (err: Error) => void = () => {};
+
+  const p: any = new Promise<void>((resolve, reject) => {
+    _resolve = resolve;
+    _reject = reject;
+  });
+
+  p.resolve = _resolve;
+  p.reject = _reject;
+  return p;
+}
+
 /**
- * Recursively add a package and its dependencies to toLoad and toLoadShared.
+ * Recursively add a package and its dependencies to toLoad.
  * A helper function for recursiveDependencies.
  * @param name The package to add
  * @param toLoad The set of names of packages to load
- * @param toLoadShared The set of names of shared libraries to load
  * @private
  */
 function addPackageToLoad(
   name: string,
-  toLoad: Map<string, string>,
-  toLoadShared: Map<string, string>
+  toLoad: Map<string, PackageLoadMetadata>,
 ) {
   name = name.toLowerCase();
   if (toLoad.has(name)) {
     return;
   }
-  const pkg_info = API.packages[name];
+  const pkg_info = API.repodata_packages[name];
   if (!pkg_info) {
     throw new Error(`No known package with name '${name}'`);
   }
-  if (pkg_info.shared_library) {
-    toLoadShared.set(name, DEFAULT_CHANNEL);
-  } else {
-    toLoad.set(name, DEFAULT_CHANNEL);
-  }
+
+  toLoad.set(name, {
+    name: name,
+    channel: DEFAULT_CHANNEL,
+    depends: pkg_info.depends,
+    installPromise: undefined,
+    done: createDonePromise(),
+  });
+
   // If the package is already loaded, we don't add dependencies, but warn
   // the user later. This is especially important if the loaded package is
   // from a custom url, in which case adding dependencies is wrong.
@@ -108,40 +137,47 @@ function addPackageToLoad(
   }
 
   for (let dep_name of pkg_info.depends) {
-    addPackageToLoad(dep_name, toLoad, toLoadShared);
+    addPackageToLoad(dep_name, toLoad);
   }
 }
 
 /**
  * Calculate the dependencies of a set of packages
  * @param names The list of names whose dependencies we need to calculate.
- * @returns Two sets, the set of normal dependencies and the set of shared
- * dependencies
+ * @returns The map of package names to PackageLoadMetadata
  * @private
  */
 function recursiveDependencies(
   names: string[],
-  errorCallback: (err: string) => void
-) {
-  const toLoad = new Map();
-  const toLoadShared = new Map();
+  errorCallback: (err: string) => void,
+): Map<string, PackageLoadMetadata> {
+  const toLoad: Map<string, PackageLoadMetadata> = new Map();
   for (let name of names) {
     const pkgname = _uri_to_package_name(name);
     if (pkgname === undefined) {
-      addPackageToLoad(name, toLoad, toLoadShared);
+      addPackageToLoad(name, toLoad);
       continue;
     }
-    if (toLoad.has(pkgname) && toLoad.get(pkgname) !== name) {
+
+    const channel = name;
+
+    if (toLoad.has(pkgname) && toLoad.get(pkgname)!.channel !== channel) {
       errorCallback(
-        `Loading same package ${pkgname} from ${name} and ${toLoad.get(
-          pkgname
-        )}`
+        `Loading same package ${pkgname} from ${channel} and ${
+          toLoad.get(pkgname)!.channel
+        }`,
       );
       continue;
     }
-    toLoad.set(pkgname, name);
+    toLoad.set(pkgname, {
+      name: pkgname,
+      channel: channel, // name is url in this case
+      depends: [],
+      installPromise: undefined,
+      done: createDonePromise(),
+    });
   }
-  return [toLoad, toLoadShared];
+  return toLoad;
 }
 
 //
@@ -150,76 +186,129 @@ function recursiveDependencies(
 
 /**
  * Download a package. If `channel` is `DEFAULT_CHANNEL`, look up the wheel URL
- * relative to baseURL from `packages.json`, otherwise use the URL specified by
+ * relative to indexURL from `repodata.json`, otherwise use the URL specified by
  * `channel`.
  * @param name The name of the package
  * @param channel Either `DEFAULT_CHANNEL` or the absolute URL to the
- * wheel or the path to the wheel relative to baseURL.
+ * wheel or the path to the wheel relative to indexURL.
  * @returns The binary data for the package
  * @private
  */
 async function downloadPackage(
   name: string,
-  channel: string
+  channel: string,
 ): Promise<Uint8Array> {
-  let file_name;
+  let file_name, uri, file_sub_resource_hash;
   if (channel === DEFAULT_CHANNEL) {
-    if (!(name in API.packages)) {
+    if (!(name in API.repodata_packages)) {
       throw new Error(`Internal error: no entry for package named ${name}`);
     }
-    file_name = API.packages[name].file_name;
+    file_name = API.repodata_packages[name].file_name;
+    uri = resolvePath(file_name, API.config.indexURL);
+    file_sub_resource_hash = API.package_loader.sub_resource_hash(
+      API.repodata_packages[name].sha256,
+    );
   } else {
-    file_name = channel;
+    uri = channel;
+    file_sub_resource_hash = undefined;
   }
   try {
-    return await _loadBinaryFile(baseURL, file_name);
+    return await loadBinaryFile(uri, file_sub_resource_hash);
   } catch (e) {
-    if (!IN_NODE) {
+    if (!IN_NODE || channel !== DEFAULT_CHANNEL) {
       throw e;
     }
   }
   console.log(
-    `Didn't find package ${file_name}, attempting to load from ${cdnURL}`
+    `Didn't find package ${file_name} locally, attempting to load from ${cdnURL}`,
   );
   // If we are IN_NODE, download the package from the cdn, then stash it into
   // the node_modules directory for future use.
-  let binary = await _loadBinaryFile(cdnURL, file_name);
+  let binary = await loadBinaryFile(cdnURL + file_name);
   console.log(
-    `Package ${file_name} loaded from ${cdnURL}, caching the wheel in node_modules for future use.`
+    `Package ${file_name} loaded from ${cdnURL}, caching the wheel in node_modules for future use.`,
   );
-  await nodeFsPromisesMod.writeFile(`${baseURL}${file_name}`, binary);
+  await nodeFsPromisesMod.writeFile(uri, binary);
   return binary;
 }
 
 /**
  * Install the package into the file system.
  * @param name The name of the package
- * @param buffer The binary data returned by downloadPkgBuffer
+ * @param buffer The binary data returned by downloadPackage
  * @private
  */
-async function installPackage(name: string, buffer: Uint8Array) {
-  let pkg = API.packages[name];
+async function installPackage(
+  name: string,
+  buffer: Uint8Array,
+  channel: string,
+) {
+  let pkg = API.repodata_packages[name];
   if (!pkg) {
     pkg = {
       file_name: ".whl",
-      install_dir: "site",
       shared_library: false,
       depends: [],
       imports: [] as string[],
     };
   }
   const filename = pkg.file_name;
-  // This Python helper function unpacks the buffer and lists out any so files therein.
+  // This Python helper function unpacks the buffer and lists out any .so files in it.
   const dynlibs = API.package_loader.unpack_buffer.callKwargs({
     buffer,
     filename,
     target: pkg.install_dir,
     calculate_dynlibs: true,
+    installer: "pyodide.loadPackage",
+    source: channel === DEFAULT_CHANNEL ? "pyodide" : channel,
   });
   for (const dynlib of dynlibs) {
     await loadDynlib(dynlib, pkg.shared_library);
   }
-  loadedPackages[name] = pkg;
+}
+
+/**
+ * Download and install the package.
+ * Downloads can be done in parallel, but installs must be done for dependencies first.
+ * @param name The name of the package
+ * @param toLoad The map of package names to PackageLoadMetadata
+ * @param loaded The set of loaded package names, this will be updated by this function.
+ * @param failed The map of <failed package name, error message>, this will be updated by this function.
+ * @private
+ */
+async function downloadAndInstall(
+  name: string,
+  toLoad: Map<string, PackageLoadMetadata>,
+  loaded: Set<string>,
+  failed: Map<string, Error>,
+) {
+  if (loadedPackages[name] !== undefined) {
+    return;
+  }
+
+  const pkg = toLoad.get(name)!;
+
+  try {
+    const buffer = await downloadPackage(pkg.name, pkg.channel);
+    const installPromisDependencies = pkg.depends.map((dependency) => {
+      return toLoad.has(dependency)
+        ? toLoad.get(dependency)!.done
+        : Promise.resolve();
+    });
+
+    // wait until all dependencies are installed
+    await Promise.all(installPromisDependencies);
+
+    await installPackage(pkg.name, buffer, pkg.channel);
+    loaded.add(pkg.name);
+    loadedPackages[pkg.name] = pkg.channel;
+  } catch (err: any) {
+    failed.set(name, err);
+    // We don't throw error when loading a package fails, but just report it.
+    // pkg.done.reject(err);
+  } finally {
+    pkg.done.resolve();
+  }
 }
 
 /**
@@ -262,34 +351,65 @@ const acquireDynlibLock = createLock();
  * @private
  */
 async function loadDynlib(lib: string, shared: boolean) {
-  const node = Module.FS.lookupPath(lib).node;
-  let byteArray;
-  if (node.mount.type == Module.FS.filesystems.MEMFS) {
-    byteArray = Module.FS.filesystems.MEMFS.getFileDataAsTypedArray(
-      Module.FS.lookupPath(lib).node
-    );
-  } else {
-    byteArray = Module.FS.readFile(lib);
-  }
   const releaseDynlibLock = await acquireDynlibLock();
+  const loadGlobally = shared;
+
+  if (DEBUG) {
+    console.debug(`Loading a dynamic library ${lib}`);
+  }
+
+  // This is a fake FS-like object to make emscripten
+  // load shared libraries from the file system.
+  const libraryFS = {
+    _ldLibraryPaths: ["/usr/lib", API.sitepackages],
+    _resolvePath: (path: string) => {
+      if (DEBUG) {
+        console.debug(`Searching a library from ${path}, required by ${lib}.`);
+      }
+
+      if (Module.PATH.isAbs(path)) {
+        if (Module.FS.findObject(path) !== null) {
+          return path;
+        }
+
+        // If the path is absolute but doesn't exist, we try to find it from
+        // the library paths.
+        path = path.substring(path.lastIndexOf("/") + 1);
+      }
+
+      for (const dir of libraryFS._ldLibraryPaths) {
+        const fullPath = Module.PATH.join2(dir, path);
+        if (Module.FS.findObject(fullPath) !== null) {
+          return fullPath;
+        }
+      }
+      return path;
+    },
+    findObject: (path: string, dontResolveLastLink: boolean) => {
+      let obj = Module.FS.findObject(
+        libraryFS._resolvePath(path),
+        dontResolveLastLink,
+      );
+      if (DEBUG) {
+        console.log(`Library ${path} found at ${obj}`);
+      }
+      return obj;
+    },
+    readFile: (path: string) =>
+      Module.FS.readFile(libraryFS._resolvePath(path)),
+  };
+
   try {
-    const module = await Module.loadWebAssemblyModule(byteArray, {
+    await Module.loadDynamicLibrary(lib, {
       loadAsync: true,
       nodelete: true,
-      allowUndefined: true,
+      global: loadGlobally,
+      fs: libraryFS,
     });
-    Module.preloadedWasm[lib] = module;
-    Module.preloadedWasm[lib.split("/").pop()!] = module;
-    if (shared) {
-      Module.loadDynamicLibrary(lib, {
-        global: true,
-        nodelete: true,
-      });
-    }
-  } catch (e) {
-    if (e.message.includes("need to see wasm magic number")) {
+  } catch (e: any) {
+    if (e && e.message && e.message.includes("need to see wasm magic number")) {
       console.warn(
-        `Failed to load dynlib ${lib}. We probably just tried to load a linux .so file or something.`
+        `Failed to load dynlib ${lib}. We probably just tried to load a linux .so file or something.`,
       );
       return;
     }
@@ -298,7 +418,7 @@ async function loadDynlib(lib: string, shared: boolean) {
     releaseDynlibLock();
   }
 }
-Tests.loadDynlib = loadDynlib;
+API.loadDynlib = loadDynlib;
 
 const acquirePackageLock = createLock();
 
@@ -322,7 +442,7 @@ const acquirePackageLock = createLock();
 export async function loadPackage(
   names: string | PyProxy | Array<string>,
   messageCallback?: (msg: string) => void,
-  errorCallback?: (msg: string) => void
+  errorCallback?: (msg: string) => void,
 ) {
   messageCallback = messageCallback || console.log;
   errorCallback = errorCallback || console.error;
@@ -333,104 +453,75 @@ export async function loadPackage(
     names = [names as string];
   }
 
-  const [toLoad, toLoadShared] = recursiveDependencies(names, errorCallback);
+  const toLoad = recursiveDependencies(names, errorCallback);
 
-  for (const [pkg, uri] of [...toLoad, ...toLoadShared]) {
+  for (const [pkg, pkg_metadata] of toLoad) {
     const loaded = loadedPackages[pkg];
     if (loaded === undefined) {
       continue;
     }
     toLoad.delete(pkg);
-    toLoadShared.delete(pkg);
     // If uri is from the DEFAULT_CHANNEL, we assume it was added as a
     // dependency, which was previously overridden.
-    if (loaded === uri || uri === DEFAULT_CHANNEL) {
+    if (
+      loaded === pkg_metadata.channel ||
+      pkg_metadata.channel === DEFAULT_CHANNEL
+    ) {
       messageCallback(`${pkg} already loaded from ${loaded}`);
     } else {
       errorCallback(
-        `URI mismatch, attempting to load package ${pkg} from ${uri} ` +
+        `URI mismatch, attempting to load package ${pkg} from ${pkg_metadata.channel} ` +
           `while it is already loaded from ${loaded}. To override a dependency, ` +
-          `load the custom package first.`
+          `load the custom package first.`,
       );
     }
   }
 
-  if (toLoad.size === 0 && toLoadShared.size === 0) {
+  if (toLoad.size === 0) {
     messageCallback("No new packages to load");
     return;
   }
 
-  const packageNames = [...toLoad.keys(), ...toLoadShared.keys()].join(", ");
+  const packageNames = [...toLoad.keys()].join(", ");
+  const loaded = new Set<string>();
+  const failed = new Map<string, Error>();
   const releaseLock = await acquirePackageLock();
   try {
     messageCallback(`Loading ${packageNames}`);
-    const sharedLibraryLoadPromises: { [name: string]: Promise<Uint8Array> } =
-      {};
-    const packageLoadPromises: { [name: string]: Promise<Uint8Array> } = {};
-    for (const [name, channel] of toLoadShared) {
-      if (loadedPackages[name]) {
-        // Handle the race condition where the package was loaded between when
-        // we did dependency resolution and when we acquired the lock.
-        toLoadShared.delete(name);
-        continue;
-      }
-      sharedLibraryLoadPromises[name] = downloadPackage(name, channel);
-    }
-    for (const [name, channel] of toLoad) {
+    for (const [name] of toLoad) {
       if (loadedPackages[name]) {
         // Handle the race condition where the package was loaded between when
         // we did dependency resolution and when we acquired the lock.
         toLoad.delete(name);
         continue;
       }
-      packageLoadPromises[name] = downloadPackage(name, channel);
+
+      // TODO: add support for prefetching modules by awaiting on a promise right
+      // here which resolves in loadPyodide when the bootstrap is done.
+      toLoad.get(name)!.installPromise = downloadAndInstall(
+        name,
+        toLoad,
+        loaded,
+        failed,
+      );
     }
 
-    const loaded: string[] = [];
-    const failed: { [name: string]: any } = {};
-    // TODO: add support for prefetching modules by awaiting on a promise right
-    // here which resolves in loadPyodide when the bootstrap is done.
-    const sharedLibraryInstallPromises: { [name: string]: Promise<void> } = {};
-    const packageInstallPromises: { [name: string]: Promise<void> } = {};
-    for (const [name, channel] of toLoadShared) {
-      sharedLibraryInstallPromises[name] = sharedLibraryLoadPromises[name]
-        .then(async (buffer) => {
-          await installPackage(name, buffer);
-          loaded.push(name);
-          loadedPackages[name] = channel;
-        })
-        .catch((err) => {
-          console.warn(err);
-          failed[name] = err;
-        });
-    }
-
-    await Promise.all(Object.values(sharedLibraryInstallPromises));
-    for (const [name, channel] of toLoad) {
-      packageInstallPromises[name] = packageLoadPromises[name]
-        .then(async (buffer) => {
-          await installPackage(name, buffer);
-          loaded.push(name);
-          loadedPackages[name] = channel;
-        })
-        .catch((err) => {
-          console.warn(err);
-          failed[name] = err;
-        });
-    }
-    await Promise.all(Object.values(packageInstallPromises));
+    await Promise.all(
+      Array.from(toLoad.values()).map(({ installPromise }) => installPromise),
+    );
 
     Module.reportUndefinedSymbols();
-    if (loaded.length > 0) {
-      const successNames = loaded.join(", ");
+    if (loaded.size > 0) {
+      const successNames = Array.from(loaded).join(", ");
       messageCallback(`Loaded ${successNames}`);
     }
-    if (Object.keys(failed).length > 0) {
-      const failedNames = Object.keys(failed).join(", ");
+
+    if (failed.size > 0) {
+      const failedNames = Array.from(failed.keys()).join(", ");
       messageCallback(`Failed to load ${failedNames}`);
-      for (const [name, err] of Object.entries(failed)) {
-        console.warn(`The following error occurred while loading ${name}:`);
-        console.error(err);
+      for (const [name, err] of failed) {
+        errorCallback(`The following error occurred while loading ${name}:`);
+        errorCallback(err.message);
       }
     }
 
@@ -449,5 +540,3 @@ export async function loadPackage(
  * install location for a particular ``package_name``.
  */
 export let loadedPackages: { [key: string]: string } = {};
-
-API.packageIndexReady = initializePackageIndex(API.config.indexURL);

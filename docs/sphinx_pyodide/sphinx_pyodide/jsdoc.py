@@ -65,7 +65,7 @@ def destructure_param(param: dict[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
-def fix_up_inline_object_signature(self: TsAnalyzer, node: dict[str, Any]):
+def fix_up_inline_object_signature(self: TsAnalyzer, node: dict[str, Any]) -> None:
     """Calls get_destructured_children on inline object types"""
     kind = node.get("kindString")
     if kind not in ["Call signature", "Constructor signature"]:
@@ -84,7 +84,7 @@ def fix_up_inline_object_signature(self: TsAnalyzer, node: dict[str, Any]):
     node["parameters"] = new_params
 
 
-def _convert_node(self: TsAnalyzer, node: dict[str, Any]):
+def _convert_node(self: TsAnalyzer, node: dict[str, Any]) -> Any:
     """Monkey patch for TsAnalyzer._convert_node.
 
     Fixes two crashes and separates documentation for destructured object
@@ -282,6 +282,7 @@ class PyodideAnalyzer:
         for (key, doclet) in self.doclets.items():
             if getattr(doclet.value, "is_private", False):
                 continue
+
             # Remove the part of the key corresponding to the file
             key = [x for x in key if "/" not in x]
             filename = key[0]
@@ -290,6 +291,8 @@ class PyodideAnalyzer:
                 doclet.value.is_private = True
                 continue
             doclet.value.name = doclet.value.name.rpartition(".")[2]
+            if filename == "module." or filename == "compat.":
+                continue
             if filename == "pyodide.":
                 # Might be named globalThis.something or exports.something.
                 # Trim off the prefix.

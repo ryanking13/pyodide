@@ -70,7 +70,7 @@ async function main() {
     }
   } catch (e) {
     console.log(
-      `Error in pyodideWorker at ${e.filename}, Line: ${e.lineno}, ${e.message}`
+      `Error in pyodideWorker at ${e.filename}, Line: ${e.lineno}, ${e.message}`,
     );
   }
 }
@@ -105,7 +105,7 @@ shown below:
 // Setup your project to serve `py-worker.js`. You should also serve
 // `pyodide.js`, and all its associated `.asm.js`, `.data`, `.json`,
 // and `.wasm` files as well:
-importScripts("https://cdn.jsdelivr.net/pyodide/dev/full/pyodide.js");
+importScripts("{{PYODIDE_CDN_URL}}pyodide.js");
 
 async function loadPyodideAndPackages() {
   self.pyodide = await loadPyodide();

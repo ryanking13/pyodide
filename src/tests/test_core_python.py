@@ -7,8 +7,6 @@ import pytest
 import yaml
 from yaml import CLoader as Loader
 
-from pyodide_build.common import UNVENDORED_STDLIB_MODULES
-
 
 def filter_info(info: dict[str, Any], browser: str) -> dict[str, Any]:
     # keep only flags related to the current browser
@@ -19,7 +17,9 @@ def filter_info(info: dict[str, Any], browser: str) -> dict[str, Any]:
     return result
 
 
-def possibly_skip_test(request, info: dict[str, Any]) -> dict[str, Any]:
+def possibly_skip_test(
+    request: pytest.FixtureRequest, info: dict[str, Any]
+) -> dict[str, Any]:
     if "segfault" in info:
         pytest.skip(f"known segfault: {info['segfault']}")
 
@@ -46,7 +46,7 @@ def test_cpython_core(main_test, selenium, request):
     if not isinstance(ignore_tests, list):
         raise Exception("Invalid python_tests.yaml entry: 'skip' should be a list")
 
-    selenium.load_package(list(UNVENDORED_STDLIB_MODULES))
+    selenium.load_package(["distutils", "test"])
     try:
         selenium.run(
             dedent(
@@ -73,7 +73,7 @@ def test_cpython_core(main_test, selenium, request):
         raise
 
 
-def get_test_info(test) -> tuple[str, dict[str, Any]]:
+def get_test_info(test: dict[str, Any] | str) -> tuple[str, dict[str, Any]]:
     if isinstance(test, dict):
         (name, info) = next(iter(test.items()))
     else:

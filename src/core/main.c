@@ -15,14 +15,7 @@
 
 #define FATAL_ERROR(args...)                                                   \
   do {                                                                         \
-    printf("FATAL ERROR: ");                                                   \
-    printf(args);                                                              \
-    printf("\n");                                                              \
-    if (PyErr_Occurred()) {                                                    \
-      printf("Error was triggered by Python exception:\n");                    \
-      PyErr_Print();                                                           \
-      EM_ASM(throw new Error("Fatal pyodide error"));                          \
-    }                                                                          \
+    EM_ASM(API.fatal_loading_error(args));                                     \
     return -1;                                                                 \
   } while (0)
 
@@ -33,26 +26,39 @@
 
 #define TRY_INIT(mod)                                                          \
   do {                                                                         \
+    int mod##_init();                                                          \
     if (mod##_init()) {                                                        \
-      FATAL_ERROR("Failed to initialize module %s.", #mod);                    \
+      FATAL_ERROR("Failed to initialize module ", #mod, ".");                  \
     }                                                                          \
   } while (0)
 
 #define TRY_INIT_WITH_CORE_MODULE(mod)                                         \
   do {                                                                         \
+    int mod##_init(PyObject* mod);                                             \
     if (mod##_init(core_module)) {                                             \
-      FATAL_ERROR("Failed to initialize module %s.", #mod);                    \
+      FATAL_ERROR("Failed to initialize module", #mod, ".");                   \
     }                                                                          \
   } while (0)
 
 // Initialize python. exit() and print message to stderr on failure.
 static void
-initialize_python()
+initialize_python(int argc, char** argv)
 {
   bool success = false;
   PyStatus status;
+
+  PyPreConfig preconfig;
+  PyPreConfig_InitPythonConfig(&preconfig);
+
+  status = Py_PreInitializeFromBytesArgs(&preconfig, argc, argv);
+  FAIL_IF_STATUS_EXCEPTION(status);
+
   PyConfig config;
   PyConfig_InitPythonConfig(&config);
+
+  status = PyConfig_SetBytesArgv(&config, argc, argv);
+  FAIL_IF_STATUS_EXCEPTION(status);
+
   status = PyConfig_SetBytesString(&config, &config.home, "/");
   FAIL_IF_STATUS_EXCEPTION(status);
   config.write_bytecode = false;
@@ -88,16 +94,9 @@ static struct PyModuleDef core_module_def = {
 int
 main(int argc, char** argv)
 {
-  EM_ASM({
-    // For some reason emscripten doesn't make UTF8ToString available on Module
-    // by default...
-    Module.UTF8ToString = UTF8ToString;
-    Module.wasmTable = wasmTable;
-  });
-
   // This exits and prints a message to stderr on failure,
   // no status code to check.
-  initialize_python();
+  initialize_python(argc, argv);
   emscripten_exit_with_live_runtime();
   return 0;
 }
@@ -111,7 +110,7 @@ pyodide_init(void)
 
   _pyodide = PyImport_ImportModule("_pyodide");
   if (_pyodide == NULL) {
-    FATAL_ERROR("Failed to import _pyodide module");
+    FATAL_ERROR("Failed to import _pyodide module.");
   }
 
   core_module = PyModule_Create(&core_module_def);
@@ -143,4 +142,15 @@ pyodide_init(void)
   Py_CLEAR(_pyodide);
   Py_CLEAR(core_module);
   return 0;
+}
+
+void
+pymain_run_python(int* exitcode);
+
+EMSCRIPTEN_KEEPALIVE int
+run_main()
+{
+  int exitcode;
+  pymain_run_python(&exitcode);
+  return exitcode;
 }

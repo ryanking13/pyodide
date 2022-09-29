@@ -1,6 +1,8 @@
 package:
   name: cffi
   version: 1.15.0
+  top-level:
+    - cffi
 requirements:
   run:
     - pycparser
@@ -10,11 +12,7 @@ source:
   patches:
     - patches/libffi-config.patch
 build:
-  script: |
-    pip install -t $HOSTSITEPACKAGES cffi==$PKG_VERSION
-test:
-  imports:
-    - cffi
+  cross-build-env: true
 about:
   home: http://cffi.readthedocs.org
   PyPI: https://pypi.org/project/cffi

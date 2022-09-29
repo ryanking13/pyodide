@@ -1,10 +1,21 @@
 import base64
 import pathlib
 import textwrap
+from functools import reduce
 
 import pytest
 
-REFERENCE_IMAGES_PATH = pathlib.Path(__file__).parent / "reference-images"
+REFERENCE_IMAGES_PATH = pathlib.Path(__file__).parent / "test_data"
+
+DECORATORS = [
+    pytest.mark.xfail_browsers(node="No supported matplotlib backends on node"),
+    pytest.mark.skip_refcount_check,
+    pytest.mark.skip_pyproxy_check,
+]
+
+
+def matplotlib_test_decorator(f):
+    return reduce(lambda x, g: g(x), DECORATORS, f)
 
 
 def run_with_resolve(selenium, code):
@@ -24,8 +35,8 @@ def run_with_resolve(selenium, code):
 def patch_font_loading_and_dpi(target_font=""):
     """Monkey-patches font loading and dpi to allow testing"""
     return textwrap.dedent(
-        f"""from matplotlib.backends.html5_canvas_backend import RendererHTMLCanvas
-        from matplotlib.backends.html5_canvas_backend import FigureCanvasHTMLCanvas
+        f"""from matplotlib_pyodide.html5_canvas_backend import RendererHTMLCanvas
+        from matplotlib_pyodide.html5_canvas_backend import FigureCanvasHTMLCanvas
         FigureCanvasHTMLCanvas.get_dpi_ratio = lambda self, context: 2.0
         load_font_into_web = RendererHTMLCanvas.load_font_into_web
         def load_font_into_web_wrapper(self, loaded_font, font_url, orig_function=load_font_into_web):
@@ -80,11 +91,8 @@ def compare_with_reference_image(selenium, reference_image):
     return deviation == 0.0
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_matplotlib(selenium):
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     selenium.run(
         """
@@ -96,11 +104,8 @@ def test_matplotlib(selenium):
     )
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_svg(selenium):
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     content = selenium.run(
         """
@@ -117,10 +122,8 @@ def test_svg(selenium):
     assert content.startswith("<?xml")
 
 
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_pdf(selenium):
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
     selenium.load_package("matplotlib")
     selenium.run(
         """
@@ -166,12 +169,9 @@ def test_font_manager(selenium):
     assert selenium.run("fontlist_built == fontlist_vendor")
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_rendering(selenium_standalone):
     selenium = selenium_standalone
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
 
     selenium.load_package("matplotlib")
     selenium.set_script_timeout(60)
@@ -180,7 +180,7 @@ def test_rendering(selenium_standalone):
         f"""
         {patch_font_loading_and_dpi()}
         import matplotlib
-        matplotlib.use("module://matplotlib.backends.html5_canvas_backend")
+        matplotlib.use("module://matplotlib_pyodide.html5_canvas_backend")
         import numpy as np
         from matplotlib import pyplot as plt
         t = np.arange(0.0, 2.0, 0.01)
@@ -198,12 +198,9 @@ def test_rendering(selenium_standalone):
     )
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_draw_image(selenium_standalone):
     selenium = selenium_standalone
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
 
     selenium.load_package("matplotlib")
     selenium.set_script_timeout(60)
@@ -212,7 +209,7 @@ def test_draw_image(selenium_standalone):
         f"""
         {patch_font_loading_and_dpi()}
         import matplotlib
-        matplotlib.use("module://matplotlib.backends.html5_canvas_backend")
+        matplotlib.use("module://matplotlib_pyodide.html5_canvas_backend")
         import numpy as np
         import matplotlib.cm as cm
         import matplotlib.pyplot as plt
@@ -238,12 +235,9 @@ def test_draw_image(selenium_standalone):
     )
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_draw_image_affine_transform(selenium_standalone):
     selenium = selenium_standalone
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
 
     selenium.load_package("matplotlib")
     selenium.set_script_timeout(60)
@@ -252,7 +246,7 @@ def test_draw_image_affine_transform(selenium_standalone):
         f"""
         {patch_font_loading_and_dpi()}
         import matplotlib
-        matplotlib.use("module://matplotlib.backends.html5_canvas_backend")
+        matplotlib.use("module://matplotlib_pyodide.html5_canvas_backend")
         import numpy as np
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtransforms
@@ -307,12 +301,9 @@ def test_draw_image_affine_transform(selenium_standalone):
     )
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_draw_text_rotated(selenium_standalone):
     selenium = selenium_standalone
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
 
     selenium.load_package("matplotlib")
     selenium.set_script_timeout(60)
@@ -324,7 +315,7 @@ def test_draw_text_rotated(selenium_standalone):
         os.environ["TESTING_MATPLOTLIB"] = "1"
 
         import matplotlib
-        matplotlib.use("module://matplotlib.backends.html5_canvas_backend")
+        matplotlib.use("module://matplotlib_pyodide.html5_canvas_backend")
         import matplotlib.pyplot as plt
         from matplotlib.dates import (
             YEARLY, DateFormatter,
@@ -362,12 +353,9 @@ def test_draw_text_rotated(selenium_standalone):
     )
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_draw_math_text(selenium_standalone):
     selenium = selenium_standalone
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
 
     selenium.load_package("matplotlib")
     selenium.set_script_timeout(60)
@@ -381,7 +369,7 @@ def test_draw_math_text(selenium_standalone):
         os.environ["TESTING_MATPLOTLIB"] = "1"
 
         import matplotlib
-        matplotlib.use("module://matplotlib.backends.html5_canvas_backend")
+        matplotlib.use("module://matplotlib_pyodide.html5_canvas_backend")
         from js import window
         window.testingMatplotlib = True
         import matplotlib.pyplot as plt
@@ -489,12 +477,9 @@ def test_draw_math_text(selenium_standalone):
     )
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_custom_font_text(selenium_standalone):
     selenium = selenium_standalone
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
 
     selenium.load_package("matplotlib")
     selenium.set_script_timeout(60)
@@ -503,7 +488,7 @@ def test_custom_font_text(selenium_standalone):
         f"""
         {patch_font_loading_and_dpi(target_font='cmsy10')}
         import matplotlib
-        matplotlib.use("module://matplotlib.backends.html5_canvas_backend")
+        matplotlib.use("module://matplotlib_pyodide.html5_canvas_backend")
         import matplotlib.pyplot as plt
         import numpy as np
 
@@ -526,12 +511,9 @@ def test_custom_font_text(selenium_standalone):
     )
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_zoom_on_polar_plot(selenium_standalone):
     selenium = selenium_standalone
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
 
     selenium.load_package("matplotlib")
     selenium.set_script_timeout(60)
@@ -540,7 +522,7 @@ def test_zoom_on_polar_plot(selenium_standalone):
         f"""
         {patch_font_loading_and_dpi()}
         import matplotlib
-        matplotlib.use("module://matplotlib.backends.html5_canvas_backend")
+        matplotlib.use("module://matplotlib_pyodide.html5_canvas_backend")
         import numpy as np
         import matplotlib.pyplot as plt
         np.random.seed(42)
@@ -569,12 +551,9 @@ def test_zoom_on_polar_plot(selenium_standalone):
     )
 
 
-@pytest.mark.skip_refcount_check
-@pytest.mark.skip_pyproxy_check
+@matplotlib_test_decorator
 def test_transparency(selenium_standalone):
     selenium = selenium_standalone
-    if selenium.browser == "node":
-        pytest.xfail("No supported matplotlib backends on node")
 
     selenium.load_package("matplotlib")
     selenium.set_script_timeout(60)
@@ -583,7 +562,7 @@ def test_transparency(selenium_standalone):
         f"""
         {patch_font_loading_and_dpi()}
         import matplotlib
-        matplotlib.use("module://matplotlib.backends.html5_canvas_backend")
+        matplotlib.use("module://matplotlib_pyodide.html5_canvas_backend")
         import numpy as np
         np.random.seed(19680801)
         import matplotlib.pyplot as plt
