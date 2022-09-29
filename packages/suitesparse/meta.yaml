@@ -11,8 +11,10 @@ source:
 requirements:
   run:
     - CLAPACK
+    - CBLAS
   host:
     - CLAPACK
+    - CBLAS
 
 build:
   sharedlibrary: true

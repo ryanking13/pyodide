@@ -38,4 +38,4 @@ build:
     emcc lapack_WA.a F2CLIBS/libf2c.a ${SIDE_MODULE_LDFLAGS} -o dist/liblapack.so
     mkdir -p ${WASM_LIBRARY_DIR}/{lib,include}
     cp -r INCLUDE/* ${WASM_LIBRARY_DIR}/include
-    cp dist/*.so ${WASM_LIBRARY_DIR}/lib
+    cp dist/liblapack.so ${WASM_LIBRARY_DIR}/lib

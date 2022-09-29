@@ -1,0 +1,14 @@
+package:
+  name: CBLAS
+  version: 3.2.1
+source:
+  src: empty
+requirements:
+  host:
+    - CLAPACK
+build:
+  sharedlibrary: true
+  # Building libblas in done in CLAPACK, here we just copy the result.
+  script: |
+    mkdir -p dist
+    cp ${WASM_LIBRARY_DIR}/lib/libblas.so dist/

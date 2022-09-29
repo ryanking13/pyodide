@@ -116,9 +116,11 @@ requirements:
   host:
     - numpy
     - CLAPACK
+    - CBLAS
   run:
     - numpy
     - CLAPACK
+    - CBLAS
 
 test:
   imports:
