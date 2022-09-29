@@ -364,3 +364,13 @@ def test_np_unique(selenium):
     import numpy as np
 
     np.unique(np.array([1.1, 1.1]), axis=-1)
+
+
+@run_in_pyodide(packages=["numpy"])
+def test_np_config(selenium):
+    import numpy as np
+
+    np_config = np.__config__  # type: ignore[attr-defined]
+
+    assert np_config.lapack_opt_info != {}, "LAPACK not found"
+    assert np_config.blas_opt_info != {}, "BLAS not found"
