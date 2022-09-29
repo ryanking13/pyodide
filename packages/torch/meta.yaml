@@ -42,7 +42,6 @@ build:
     export USE_SYSTEM_NCCL=0
     export BUILD_CAFFE2_OPS=0
     export BUILD_CAFFE2=0
-    export CMAKE_TOOLCHAIN_FILE=$PYODIDE_ROOT/packages/torch/cmake/Toolchain.cmake
 
     # Note: We need protoc binary during the build
     case "$(uname -s)" in
