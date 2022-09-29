@@ -581,23 +581,6 @@ workflows:
                   - ./dist/opencv*
 
       - build-packages:
-          name: build-packages-torch
-          packages: torch
-          requires:
-            - build-packages-no-numpy-dependents
-          filters:
-            tags:
-              only: /.*/
-          post-steps:
-            - persist_to_workspace:
-                root: .
-                paths:
-                  - ./packages/torch/build
-                  - ./packages/torch/dist
-                  - ./packages/build-logs/torch*
-                  - ./dist/torch*
-
-      - build-packages:
           name: build-packages-numpy-dependents
           packages: "*,!opencv-python,!torch"
           requires:
@@ -614,11 +597,10 @@ workflows:
 
       - build-packages:
           name: build-packages
-          packages: "*"
+          packages: "*,!torch"
           requires:
             - build-packages-numpy-dependents
             - build-packages-opencv-python
-            - build-packages-torch
           filters:
             tags:
               only: /.*/
