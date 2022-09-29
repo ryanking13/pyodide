@@ -15,9 +15,11 @@ requirements:
   host:
     - CLAPACK
     - CBLAS
+    - blis
   run:
-    - CLAPACK
-    - CBLAS
+    # - CLAPACK
+    # - CBLAS  # netlib blas
+    - blis # blis
 build:
   backend-flags: --disable-optimization
   cflags: |
@@ -29,8 +31,20 @@ build:
     - numpy/core/lib/libnpymath.a
     - numpy/random/lib/libnpyrandom.a
   script: |
-    export NPY_BLAS_LIBS="-I$WASM_LIBRARY_DIR/include -L$WASM_LIBRARY_DIR/lib -lblas"
-    export NPY_LAPACK_LIBS="-I$WASM_LIBRARY_DIR/include -L$WASM_LIBRARY_DIR/lib -llapack"
+    echo "[blis]" >> site.cfg
+    echo "libraries = blis" >> site.cfg
+    echo "library_dirs = ${WASM_LIBRARY_DIR}/lib" >> site.cfg
+    echo "include_dirs = ${WASM_LIBRARY_DIR}/include/blis" >> site.cfg
+
+    # blis
+    export BLAS="blis"
+    export LDFLAGS="-L${WASM_LIBRARY_DIR}/lib"
+
+    # export NPY_BLAS_LIBS="-I$WASM_LIBRARY_DIR/include -L$WASM_LIBRARY_DIR/lib -lblis"
+    # blas (netlib blas)
+    # export NPY_BLAS_LIBS="-I$WASM_LIBRARY_DIR/include -L$WASM_LIBRARY_DIR/lib -lblas"
+
+    # export NPY_LAPACK_LIBS="-I$WASM_LIBRARY_DIR/include -L$WASM_LIBRARY_DIR/lib -llapack"
 about:
   home: https://www.numpy.org
   PyPI: https://pypi.org/project/numpy

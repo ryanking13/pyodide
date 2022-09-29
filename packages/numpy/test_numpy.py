@@ -372,5 +372,30 @@ def test_np_config(selenium):
 
     np_config = np.__config__  # type: ignore[attr-defined]
 
-    assert np_config.lapack_opt_info != {}, "LAPACK not found"
     assert np_config.blas_opt_info != {}, "BLAS not found"
+    assert np_config.lapack_opt_info != {}, "LAPACK not found"
+
+
+@pytest.mark.driver_timeout(1000)
+@pytest.mark.benchmark(
+    max_time=10,
+    min_rounds=3,
+)
+def test_blas_bench(selenium, benchmark):
+    selenium.load_package("numpy")
+    selenium.run(
+        """
+        import numpy as np
+        from time import time
+        """
+    )
+    benchmark(
+        selenium.run,
+        """
+        N = 1000
+        X = np.random.RandomState(0).rand(N, N)
+        t0 = time()
+        X.dot(X)
+        print(f'Wall time: {time() - t0:.2f} s')
+        """,
+    )
