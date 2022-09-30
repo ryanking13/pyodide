@@ -17,12 +17,8 @@ source:
 requirements:
   run:
     - numpy
-# build:
-#   cxxflags: |
-#     -fPIC
-#     -s USE_ZLIB=1
-#   ldflags: |
-#     -lz
+  host:
+    - libprotobuf
 build:
   script: |
     export VERBOSE=1
@@ -31,7 +27,6 @@ build:
     export USE_CUDNN=0
     export USE_FBGEMM=0
     export USE_KINETO=0
-    export BUILD_TEST=0
     export USE_MKLDNN=0
     export USE_NNPACK=0
     export USE_QNNPACK=0
@@ -40,8 +35,12 @@ build:
     export USE_GLOO=0
     export USE_MPI=0
     export USE_SYSTEM_NCCL=0
+    export USE_MAGMA=0
+    export BUILD_TEST=0
     export BUILD_CAFFE2_OPS=0
     export BUILD_CAFFE2=0
+    export BUILD_CUSTOM_PROTOBUF=0
+    export BUILD_SHARED_LIBS=0
 
     # Note: We need protoc binary during the build
     case "$(uname -s)" in
@@ -51,7 +50,7 @@ build:
     esac
 
     # TODO: handle 32bit or arm case?
-    export PROTOC_VERSION="3.13.0"
+    export PROTOC_VERSION="21.6"
     export PROTOC_ZIP="protoc-${PROTOC_VERSION}-${MACHINE}-x86_64.zip"
     export PROTOC_URL="https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}"
 
@@ -59,11 +58,13 @@ build:
     wget ${PROTOC_URL}
     unzip ${PROTOC_ZIP} -d protoc
 
-    export PROTOC_EXECUTABLE_PATH="$(pwd)/protoc/bin/protoc"
-    # ln -s "$(pwd)/protoc/bin/protoc" "$(pwd)/protoc/bin/protobuf::protoc"
-    # export PATH=${PATH}:$(pwd)/protoc/bin/
-    # export CAFFE2_CUSTOM_PROTOC_EXECUTABLE="$(pwd)/protoc/bin/protoc"
-    # export PROTOBUF_PROTOC_EXECUTABLE="$(pwd)/protoc/bin/protoc"
+    ln -s "$(pwd)/protoc/bin/protoc" "$(pwd)/protoc/bin/protobuf::protoc"
+    export PATH=${PATH}:$(pwd)/protoc/bin/
+
+    echo "set(PROTOBUF_LIBRARY ${WASM_LIBRARY_DIR}/lib/libprotobuf.a)" >> ProjectInclude.cmake
+    echo "set(PROTOBUF_PROTOC_EXECUTABLE $(pwd)/protoc/bin/protoc)" >> ProjectInclude.cmake
+    echo "set(CAFFE2_CUSTOM_PROTOC_EXECUTABLE $(pwd)/protoc/bin/protoc)" >> ProjectInclude.cmake
+    export CMAKE_PROJECT_INCLUDE=$(pwd)/ProjectInclude.cmake
 
 test:
   imports:
