@@ -263,7 +263,26 @@ async function installPackage(
     source: channel === DEFAULT_CHANNEL ? "pyodide" : channel,
   });
   for (const dynlib of dynlibs) {
-    await loadDynlib(dynlib, pkg.shared_library);
+    // If it is a known shared library, we load it globally.
+    let loadGlobally = pkg.shared_library;
+
+    if (!loadGlobally) {
+      // It is possible that a Python wheel internally ship a shared library,
+      // which is required by some other Python native extension module.
+      // This is a heuristic to determine if the library is a shared library.
+      // Normally a system library would start with "lib",
+      // and will not contain extension suffixes like "cpython-3.10-wasm32-emscripten.so"
+      const libname = dynlib.substring(dynlib.lastIndexOf("/") + 1);
+
+      if (
+        libname.startsWith("lib") &&
+        !libname.includes(API.extension_suffix)
+      ) {
+        loadGlobally = true;
+      }
+    }
+
+    await loadDynlib(dynlib, loadGlobally);
   }
 }
 
@@ -350,9 +369,8 @@ const acquireDynlibLock = createLock();
  * @param shared Is this a shared library or not?
  * @private
  */
-async function loadDynlib(lib: string, shared: boolean) {
+async function loadDynlib(lib: string, loadGlobally: boolean) {
   const releaseDynlibLock = await acquireDynlibLock();
-  const loadGlobally = shared;
 
   if (DEBUG) {
     console.debug(`Loading a dynamic library ${lib}`);
