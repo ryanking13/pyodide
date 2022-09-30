@@ -20,6 +20,7 @@ requirements:
   host:
     - libprotobuf
 build:
+  exports: "whole_archive"
   script: |
     export VERBOSE=1
     export USE_BREAKPAD=0
