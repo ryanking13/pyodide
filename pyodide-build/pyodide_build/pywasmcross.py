@@ -18,7 +18,18 @@ from __main__ import __file__ as INVOKED_PATH_STR
 
 INVOKED_PATH = Path(INVOKED_PATH_STR)
 
-SYMLINKS = {"cc", "c++", "ld", "ar", "gcc", "gfortran", "cargo"}
+SYMLINKS = {
+    "cc",
+    "c++",
+    "ld",
+    "ar",
+    "gcc",
+    "ranlib",
+    "strip",
+    "gfortran",
+    "cargo",
+    "cmake",
+}
 IS_COMPILER_INVOCATION = INVOKED_PATH.name in SYMLINKS
 
 if IS_COMPILER_INVOCATION:
@@ -32,7 +43,7 @@ if IS_COMPILER_INVOCATION:
         raise RuntimeError(
             "Invalid invocation: can't find PYWASMCROSS_ARGS."
             f" Invoked from {INVOKED_PATH}."
-        )
+        ) from None
 
     sys.path = PYWASMCROSS_ARGS.pop("PYTHONPATH")
     os.environ["PATH"] = PYWASMCROSS_ARGS.pop("PATH")
@@ -217,9 +228,9 @@ def get_library_output(line: list[str]) -> str | None:
     Check if the command is a linker invocation. If so, return the name of the
     output file.
     """
-    pattern = re.compile(r"\.so(.\d+)*$")
+    SHAREDLIB_REGEX = re.compile(r"\.so(.\d+)*$")
     for arg in line:
-        if not arg.startswith("-") and pattern.search(arg):
+        if not arg.startswith("-") and SHAREDLIB_REGEX.search(arg):
             return arg
     return None
 
@@ -363,6 +374,33 @@ def replay_genargs_handle_argument(arg: str) -> str | None:
         return None
     # fmt: on
     return arg
+
+
+def get_cmake_compiler_flags() -> list[str]:
+    """
+    GeneraTe cmake compiler flags.
+    emcmake will set these values to emcc, em++, ...
+    but we need to set them to cc, c++, in order to make them pass to pywasmcross.
+    Returns
+    -------
+    The commandline flags to pass to cmake.
+    """
+    compiler_flags = {
+        "CMAKE_C_COMPILER": "cc",
+        "CMAKE_CXX_COMPILER": "c++",
+        "CMAKE_AR": "ar",
+        "CMAKE_C_COMPILER_AR": "ar",
+        "CMAKE_CXX_COMPILER_AR": "ar",
+    }
+
+    flags = []
+    symlinks_dir = Path(sys.argv[0]).parent
+    for key, value in compiler_flags.items():
+        assert value in SYMLINKS
+
+        flags.append(f"-D{key}={symlinks_dir / value}")
+
+    return flags
 
 
 def _calculate_object_exports_readobj_parse(output: str) -> list[str]:
@@ -537,6 +575,8 @@ def handle_command_generate_args(
     for arg in line:
         if arg.startswith("-print-file-name"):
             return line
+    if len(line) == 2 and line[1] == "-v":
+        return ["emcc", "-v"]
 
     cmd = line[0]
     if cmd == "ar":
@@ -549,6 +589,20 @@ def handle_command_generate_args(
         # distutils doesn't use the c++ compiler when compiling c++ <sigh>
         if any(arg.endswith((".cpp", ".cc")) for arg in line):
             new_args = ["em++"]
+    elif cmd == "cmake":
+        # If it is a build/install command, we don't do anything.
+        if "--build" in line or "--install" in line:
+            return line
+
+        flags = get_cmake_compiler_flags()
+        line[:1] = ["emcmake", "cmake", *flags]
+        return line
+    elif cmd == "ranlib":
+        line[0] = "emranlib"
+        return line
+    elif cmd == "strip":
+        line[0] = "emstrip"
+        return line
     else:
         return line
 

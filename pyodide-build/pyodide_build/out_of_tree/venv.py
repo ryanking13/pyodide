@@ -1,4 +1,3 @@
-import argparse
 import shutil
 import subprocess
 import sys
@@ -11,18 +10,8 @@ from ..common import (
     exit_with_stdio,
     get_make_flag,
     get_pyodide_root,
-    in_xbuild_env,
+    in_xbuildenv,
 )
-
-
-def main(parser_args: argparse.Namespace) -> None:
-    create_pyodide_venv(Path(parser_args.dest))
-
-
-def make_parser(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
-    parser.description = "Create a Pyodide virtual environment"
-    parser.add_argument("dest", help="directory to create virtualenv at", type=str)
-    return parser
 
 
 def eprint(*args, **kwargs):
@@ -63,19 +52,19 @@ def create_pip_conf(venv_root: Path) -> None:
 
     This file adds a few options that will always be used by pip install.
     """
-    if in_xbuild_env():
-        # In the xbuild_env, we don't have the packages locally. We will include
+    if in_xbuildenv():
+        # In the xbuildenv, we don't have the packages locally. We will include
         # in the xbuildenv a PEP 503 index for the vendored Pyodide packages
         # https://peps.python.org/pep-0503/
-
-        # TODO create the index as part of the xbuildenv
-        repo = f'extra-index-url={get_pyodide_root()/"dist/pypi_index"}'
-        raise NotImplementedError()
+        repo = f'extra-index-url=file:{get_pyodide_root()/"pypa_index"}'
     else:
         # In the Pyodide development environment, the Pyodide dist directory
         # should contain the needed wheels. find-links
         repo = f'find-links={get_pyodide_root()/"dist"}'
 
+    # Prevent attempts to install binary wheels from source.
+    # Maybe some day we can convince pip to invoke `pyodide build` as the build
+    # front end for wheels...
     (venv_root / "pip.conf").write_text(
         dedent(
             f"""
@@ -126,6 +115,9 @@ def get_pip_monkeypatch(venv_bin: Path) -> str:
         os.environ["_PYTHON_HOST_PLATFORM"] = host_platform
         os.environ["_PYTHON_SYSCONFIGDATA_NAME"] = f'_sysconfigdata_{{sys.abiflags}}_{{sys.platform}}_{{sys.implementation._multiarch}}'
         sys.path.append("{sysconfigdata_dir}")
+        import sysconfig
+        sysconfig.get_config_vars()
+        del os.environ["_PYTHON_SYSCONFIGDATA_NAME"]
         """
     )
 
@@ -172,28 +164,21 @@ def create_pyodide_script(venv_bin: Path) -> None:
     """Write pyodide cli script into the virtualenv bin folder"""
     import os
 
-    # The pyodide cli must be invoked outside of the virtual env. In order to
-    # ensure this, we have to restore VIRTUAL_ENV, PATH, and PYODIDE_ROOT to
-    # their current values before invoking it..
-    # In case we are inside an xbuildenv, make sure to make the path relative to
-    # this file and not relative to PYODIDE_ROOT.
-    pyodide_build_path = str(Path(__file__).parents[2])
+    # Temporarily restore us to the environment that 'pyodide venv' was
+    # invoked in
+    PATH = os.environ["PATH"]
+    PYODIDE_ROOT = os.environ["PYODIDE_ROOT"]
 
-    # Resetting PATH and VIRTUAL_ENV will temporarily restore us to the virtual
-    # environment that 'pyodide venv' was invoked in (or no virtual environment
-    # if we aren't currently in one). To be extra careful, we set PYTHON_PATH too.
-    environment_vars = [f"PYTHONPATH={pyodide_build_path}"]
-    for environment_var in ["VIRTUAL_ENV", "PATH", "PYODIDE_ROOT"]:
-        value = os.environ.get(environment_var, "''")
-        environment_vars.append(f"{environment_var}={value}")
-    environment = " ".join(environment_vars)
+    original_pyodide_cli = shutil.which("pyodide")
+    if original_pyodide_cli is None:
+        raise RuntimeError("ERROR: pyodide cli not found")
 
     pyodide_path = venv_bin / "pyodide"
     pyodide_path.write_text(
         dedent(
             f"""
             #!/bin/sh
-            {environment} exec {sys.executable} -m pyodide_build.out_of_tree "$@"
+            PATH='{PATH}' PYODIDE_ROOT='{PYODIDE_ROOT}' exec {original_pyodide_cli} "$@"
             """
         )
     )
@@ -202,26 +187,23 @@ def create_pyodide_script(venv_bin: Path) -> None:
 
 def install_stdlib(venv_bin: Path) -> None:
     """Install micropip and all unvendored stdlib modules"""
-    # Micropip we can install with pip!
-    toload = ["micropip"]
-    result = subprocess.run(
-        [venv_bin / "pip", "install", *toload],
-        capture_output=True,
-        encoding="utf8",
-    )
-    check_result(result, "ERROR: failed to invoke pip")
+    # Micropip we could install with pip hypothetically, but because we use
+    # `--extra-index-url` it would install the pypi version which we don't want.
 
     # Other stuff we need to load with loadPackage
     # TODO: Also load all shared libs.
+    to_load = ["micropip"]
     result = subprocess.run(
         [
             venv_bin / "python",
             "-c",
             dedent(
-                """
+                f"""
                 from _pyodide._importhook import UNVENDORED_STDLIBS_AND_TEST;
                 from pyodide_js import loadPackage;
-                loadPackage(UNVENDORED_STDLIBS_AND_TEST);
+
+                to_load = [*UNVENDORED_STDLIBS_AND_TEST, *{to_load!r}]
+                loadPackage(to_load);
                 """
             ),
         ],
