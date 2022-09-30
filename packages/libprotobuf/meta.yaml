@@ -1,0 +1,25 @@
+package:
+  name: libprotobuf
+  version: 21.6
+
+source:
+  url: https://github.com/protocolbuffers/protobuf/archive/refs/tags/v21.6.tar.gz
+  sha256: dbb16fdbca8f277c9a194d9a837395cde408ca136738d94743130dd0de015efd
+
+build:
+  library: true
+  script: |
+    mkdir -p build
+    cd build && emcmake cmake \
+      -DCMAKE_C_FLAGS="-fPIC -Wno-deprecated-declarations" \
+      -DCMAKE_CXX_FLAGS="-fPIC -Wno-deprecated-declarations" \
+      -Dprotobuf_BUILD_TESTS=OFF \
+      -Dprotobuf_BUILD_CONFORMANCE=OFF \
+      -Dprotobuf_BUILD_EXAMPLES=OFF \
+      -Dprotobuf_BUILD_SHARED_LIBS=OFF \
+      -Dprotobuf_BUILD_PROTOC_BINARIES=OFF \
+      -Dprotobuf_WITH_ZLIB=OFF \
+      ../
+
+    emmake make -j ${PYODIDE_JOBS:-3}
+    emmake make install
