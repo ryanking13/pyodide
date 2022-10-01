@@ -279,7 +279,7 @@ jobs:
     env:
       DISPLAY: :99
 
-    needs: [build-core]
+    needs: [build-torch]
     strategy:
       fail-fast: false
       matrix:
