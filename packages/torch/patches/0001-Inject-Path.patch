@@ -1,0 +1,25 @@
+From e9d53a85bb34b1434b80c65a783576bfec87666b Mon Sep 17 00:00:00 2001
+From: ryanking13 <def6488@gmail.com>
+Date: Tue, 3 May 2022 05:08:34 +0000
+Subject: [PATCH 1/2] Inject Path
+
+---
+ setup.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/setup.py b/setup.py
+index f1ebab7..d5a5716 100644
+--- a/setup.py
++++ b/setup.py
+@@ -229,6 +229,8 @@ import importlib
+ import time
+ import sysconfig
+ 
++sys.path.append(os.getcwd())
++
+ from tools.build_pytorch_libs import build_caffe2
+ from tools.setup_helpers.env import (IS_WINDOWS, IS_DARWIN, IS_LINUX,
+                                      build_type)
+-- 
+2.35.1
+

@@ -582,7 +582,7 @@ workflows:
 
       - build-packages:
           name: build-packages-numpy-dependents
-          packages: "*,!opencv-python"
+          packages: "*,!opencv-python,!torch"
           requires:
             - build-packages-no-numpy-dependents
           filters:
@@ -597,7 +597,7 @@ workflows:
 
       - build-packages:
           name: build-packages
-          packages: "*"
+          packages: "*,!torch"
           requires:
             - build-packages-numpy-dependents
             - build-packages-opencv-python

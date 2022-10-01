@@ -1,0 +1,25 @@
+From 5f5e4cf4eb8a07671bfa17c3441a122f17656665 Mon Sep 17 00:00:00 2001
+From: ryanking13 <def6488@gmail.com>
+Date: Tue, 3 May 2022 05:08:34 +0000
+Subject: [PATCH] Skip dependency check
+
+---
+ setup.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/setup.py b/setup.py
+index f1ebab7..1cfaeb3 100644
+--- a/setup.py
++++ b/setup.py
+@@ -228,7 +228,7 @@ import glob
+ import importlib
+ import time
+ import sysconfig
+-
++import os; print(os.listdir(), __file__)
+ from tools.build_pytorch_libs import build_caffe2
+ from tools.setup_helpers.env import (IS_WINDOWS, IS_DARWIN, IS_LINUX,
+                                      build_type)
+-- 
+2.35.1
+
