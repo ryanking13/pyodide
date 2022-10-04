@@ -59,3 +59,5 @@ build:
     export FFMPEG_ROOT="$WASM_LIBRARY_DIR"
 
     source $PYODIDE_ROOT/packages/opencv-python/cmake/build_args.sh
+  post: |
+    find ${PKG_BUILD_DIR} -name "libopencv*.so" -exec cp "{}" ${WHEELDIR}/cv2 \;
