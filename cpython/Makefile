@@ -20,7 +20,7 @@ all: $(INSTALL)/lib/$(LIB) $(INSTALL)/lib/libffi.a
 
 .PHONY: zip-stdlib
 zip-stdlib: $(INSTALL)/lib/$(LIB)
-	./wasm_assets.py --out $(CPYTHONZIP)
+	./wasm_assets.py --out $(CPYTHONZIP) --python-version $(PYVERSION)
 
 $(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB)
 	( \

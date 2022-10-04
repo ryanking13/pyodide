@@ -75,12 +75,6 @@ def path(val: str) -> pathlib.Path:
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--buildroot",
-    help="absolute path to build root",
-    default=pathlib.Path(__file__).resolve().parent,
-    type=path,
-)
-parser.add_argument(
     "-o",
     "--out",
     default=pathlib.Path("stdlib_zip"),
