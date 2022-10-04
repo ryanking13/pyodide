@@ -75,12 +75,15 @@ def path(val: str) -> pathlib.Path:
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-o",
-    "--out",
-    default=pathlib.Path("stdlib_zip"),
+    "--libdir",
+    default=pathlib.Path("stdlib"),
     type=path,
 )
-
+parser.add_argument(
+    "--zipdir",
+    default=pathlib.Path("stdlib"),
+    type=path,
+)
 parser.add_argument(
     "--python-version",
     help="Python version in {major}.{minor}.{patch} format",
@@ -100,15 +103,15 @@ def main():
 
     # Library directory relative to $(prefix).
     WASM_LIB = pathlib.PurePath("lib")
-    WASM_STDLIB_ZIP = WASM_LIB / f"python{version_major}{version_minor}.zip"
+    WASM_STDLIB_ZIP = f"python{version_major}{version_minor}.zip"
     WASM_STDLIB = WASM_LIB / f"python{version_major}.{version_minor}"
     WASM_DYNLOAD = WASM_STDLIB / "lib-dynload"
     WASM_SITEPACKAGES = WASM_STDLIB / "site-packages"
 
     args.srcdir = SRCDIR
     args.srcdir_lib = SRCDIR_LIB
-    args.wasm_root = args.out.absolute()
-    args.wasm_stdlib_zip = args.wasm_root / WASM_STDLIB_ZIP
+    args.wasm_root = args.libdir.absolute()
+    args.wasm_stdlib_zip = args.zipdir.absolute() / WASM_STDLIB_ZIP
     args.wasm_stdlib = args.wasm_root / WASM_STDLIB
     args.wasm_dynload = args.wasm_root / WASM_DYNLOAD
     args.wasm_sitepackages = args.wasm_root / WASM_SITEPACKAGES

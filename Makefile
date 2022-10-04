@@ -39,7 +39,7 @@ dist/pyodide.asm.js: \
 	src/js/_pyodide.out.js \
 	$(wildcard src/py/lib/*.py) \
 	$(CPYTHONLIB) \
-	$(CPYTHONZIP)
+	dist/$(CPYTHONLIB_ZIP)
 	date +"[%F %T] Building pyodide.asm.js..."
 	[ -d dist ] || mkdir dist
 	$(CXX) -o dist/pyodide.asm.js $(filter %.o,$^) \
@@ -177,8 +177,11 @@ $(CPYTHONLIB): emsdk/emsdk/.complete
 	make -C $(CPYTHONROOT)
 	date +"[%F %T] done building cpython..."
 
-$(CPYTHONZIP): $(CPYTHONLIB)
+$(CPYTHONLIB_NOTZIPPED): $(CPYTHONLIB)
 	make -C $(CPYTHONROOT) zip-stdlib
+
+dist/$(CPYTHONLIB_ZIP): $(CPYTHONLIB_NOTZIPPED)
+	cp $(CPYTHONINSTALL)/$(CPYTHONLIB_ZIP) $@
 
 dist/repodata.json: FORCE
 	date +"[%F %T] Building packages..."

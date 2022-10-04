@@ -68,18 +68,16 @@ function wrapPythonGlobals(
   });
 }
 
+function writeStreamToFile(Module: any, filename: string, data: Uint8Array) {
+  let stream = Module.FS.open(filename, "w");
+  Module.FS.write(stream, data, 0, data.byteLength, undefined, true);
+  Module.FS.close(stream);
+}
+
 function unpackPyodidePy(Module: any, pyodide_py_tar: Uint8Array) {
   const fileName = "/pyodide_py.tar";
-  let stream = Module.FS.open(fileName, "w");
-  Module.FS.write(
-    stream,
-    pyodide_py_tar,
-    0,
-    pyodide_py_tar.byteLength,
-    undefined,
-    true,
-  );
-  Module.FS.close(stream);
+  writeStreamToFile(Module, fileName, pyodide_py_tar);
+
   const code_ptr = Module.stringToNewUTF8(`
 from sys import version_info
 pyversion = f"python{version_info.major}.{version_info.minor}"
@@ -291,6 +289,9 @@ export async function loadPyodide(
     _node_mounts: [],
   };
   const config = Object.assign(default_config, options) as ConfigType;
+
+  const stdlib_zip = "python310.zip";
+  const stdlib_zip_promise = loadBinaryFile(config.indexURL + stdlib_zip);
   const pyodide_py_tar_promise = loadBinaryFile(
     config.indexURL + "pyodide_py.tar",
   );
@@ -354,6 +355,8 @@ If you updated the Pyodide version, make sure you also updated the 'indexURL' pa
   setHomeDirectory(Module, config.homedir);
 
   const pyodide_py_tar = await pyodide_py_tar_promise;
+
+  writeStreamToFile(Module, `/lib/${stdlib_zip}`, await stdlib_zip_promise);
   unpackPyodidePy(Module, pyodide_py_tar);
   Module._pyodide_init();
 

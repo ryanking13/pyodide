@@ -10,7 +10,6 @@ INSTALL=$(CPYTHONINSTALL)
 TARBALL=$(ROOT)/downloads/Python-$(PYVERSION).tgz
 URL=https://www.python.org/ftp/python/$(PYVERSION)/Python-$(PYVERSION).tgz
 LIB=libpython$(PYMAJOR).$(PYMINOR).a
-PYZIP=python$(PYMAJOR)$(PYMINOR).zip
 
 FFIBUILD=$(ROOT)/build/libffi
 LIBFFIREPO=https://github.com/hoodmane/libffi-emscripten
@@ -20,7 +19,8 @@ all: $(INSTALL)/lib/$(LIB) $(INSTALL)/lib/libffi.a
 
 .PHONY: zip-stdlib
 zip-stdlib: $(INSTALL)/lib/$(LIB)
-	./wasm_assets.py --out $(CPYTHONZIP) --python-version $(PYVERSION)
+	rm -rf $(CPYTHONLIB_NOTZIPPED)
+	./wasm_assets.py --libdir $(CPYTHONLIB_NOTZIPPED) --zipdir $(INSTALL) --python-version $(PYVERSION)
 
 $(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB)
 	( \
