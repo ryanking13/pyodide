@@ -129,7 +129,7 @@ export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-leventloop.js \
 	\
 	--use-preload-plugins \
-	--preload-file $(CPYTHONZIP)/lib@/lib/ \
+	--preload-file $(CPYTHONLIB_NOTZIPPED)/lib@/lib/ \
 	--preload-file src/py/lib@/lib/python$(PYMAJOR).$(PYMINOR)/\
 	--pre-js src/core/pre.js \
 	--pre-js src/js/_pyodide.out.js \

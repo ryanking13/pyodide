@@ -290,8 +290,8 @@ export async function loadPyodide(
   };
   const config = Object.assign(default_config, options) as ConfigType;
 
-  const stdlib_zip = "python310.zip";
-  const stdlib_zip_promise = loadBinaryFile(config.indexURL + stdlib_zip);
+  // TODO: find a way to get Python version from the build
+  const stdlib_zip_file = "python310.zip";
   const pyodide_py_tar_promise = loadBinaryFile(
     config.indexURL + "pyodide_py.tar",
   );
@@ -302,6 +302,16 @@ export async function loadPyodide(
       Module.FS.mkdirTree(mount);
       Module.FS.mount(Module.NODEFS, { root: mount }, mount);
     }
+  });
+
+  Module.preRun.push(() => {
+    Module.FS.createPreloadedFile(
+      "/lib",
+      stdlib_zip_file,
+      config.indexURL + stdlib_zip_file,
+      true,
+      true,
+    );
   });
 
   Module.arguments = config.args;
@@ -356,7 +366,6 @@ If you updated the Pyodide version, make sure you also updated the 'indexURL' pa
 
   const pyodide_py_tar = await pyodide_py_tar_promise;
 
-  writeStreamToFile(Module, `/lib/${stdlib_zip}`, await stdlib_zip_promise);
   unpackPyodidePy(Module, pyodide_py_tar);
   Module._pyodide_init();
 

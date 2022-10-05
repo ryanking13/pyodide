@@ -42,11 +42,15 @@ UNVENDORED_FILES = (
     "lzma.py",
 )
 
-# TODO: These modules have test directory which we unvendors it separately.
-#       So we should not pack them into the zip file in order to make e.g. import ctypes.test work.
-#       Note that all those tests are moved to the subdirectory of test in Python 3.11,
-#       so we don't need this after Python 3.11 update.
-NOT_ZIPPED_FILES = ("ctypes/", "unittest/")
+
+NOT_ZIPPED_FILES = [
+    # TODO: ctypes and unittest have test directory which we unvendors it separately.
+    #       So we should not pack them into the zip file in order to make e.g. import ctypes.test work.
+    #       Note that all those tests are moved to the subdirectory of test in Python 3.11,
+    #       so we don't need this after Python 3.11 update.
+    "ctypes/",
+    "unittest/",
+]
 
 
 def create_stdlib_zip(
@@ -138,12 +142,16 @@ def main():
 
     # os.py is a marker for finding the correct lib directory.
     shutil.copy(args.srcdir_lib / "os.py", args.wasm_stdlib)
-    for not_zipped_dir in NOT_ZIPPED_FILES:
-        shutil.copytree(
-            args.srcdir_lib / not_zipped_dir,
-            args.wasm_stdlib / not_zipped_dir,
-            ignore=shutil.ignore_patterns("test", "__pycache__"),
-        )
+    for not_zipped_file in NOT_ZIPPED_FILES:
+        if (args.srcdir_lib / not_zipped_file).is_dir():
+            shutil.copytree(
+                args.srcdir_lib / not_zipped_file,
+                args.wasm_stdlib / not_zipped_file,
+                ignore=shutil.ignore_patterns("test", "__pycache__"),
+            )
+        else:
+            shutil.copy(args.srcdir_lib / not_zipped_file, args.wasm_stdlib)
+
     # The rest of stdlib that's useful in a WASM context.
     create_stdlib_zip(args)
     size = round(args.wasm_stdlib_zip.stat().st_size / 1024**2, 2)
