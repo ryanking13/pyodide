@@ -116,7 +116,8 @@
 - test_augassign
 - test_base64
 - test_baseexception
-- test_bdb
+- test_bdb:
+    xfail: zipimport
 - test_bigaddrspace
 - test_bigmem
 - test_binascii
@@ -621,6 +622,7 @@
 - test_runpy:
     skip:
       - test_pymain_run* # fork
+      - test_run* # zipimport
 - test_sax
 - test_sched:
     skip:
