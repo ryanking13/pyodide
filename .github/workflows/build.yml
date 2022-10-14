@@ -1,6 +1,11 @@
 name: build
 description: "Build Pyodide with given packages"
 
+env:
+  EMSDK_NUM_CORES: 2
+  EMCC_CORES: 2
+  CCACHE_DIR: /tmp/ccache
+
 on:
   workflow_call:
     inputs:

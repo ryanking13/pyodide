@@ -6,11 +6,6 @@ concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-env:
-  EMSDK_NUM_CORES: 2
-  EMCC_CORES: 2
-  CCACHE_DIR: /tmp/ccache
-
 jobs:
   test-python:
     runs-on: ubuntu-latest
