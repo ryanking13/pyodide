@@ -27,11 +27,6 @@ on:
         required: false
         type: string
         default: "pyodide"
-      retention-days:
-        description: "days to keep dist artifacts"
-        required: false
-        type: number
-        default: 1
 
 permissions:
   contents: read

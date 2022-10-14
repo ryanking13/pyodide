@@ -26,7 +26,7 @@ on:
       retention-days:
         description: "days to keep dist artifacts"
         type: number
-        reqruied: false
+        required: false
         default: 1
 
 permissions:
