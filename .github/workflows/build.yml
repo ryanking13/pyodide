@@ -1,5 +1,4 @@
 name: build
-description: "Build Pyodide with given packages"
 
 env:
   EMSDK_NUM_CORES: 2
@@ -12,6 +11,7 @@ on:
       packages:
         description: "packages to be built"
         required: true
+        type: string
         default: "core"
       artifacts-prefix-prev:
         description: "prefix for artifacts for previous build"
