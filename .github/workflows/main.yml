@@ -57,7 +57,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       packages: "*"
-      artifacts-prev: no-numpy-dependents
+      artifacts-prefix-prev: no-numpy-dependents
       artifacts-prefix: packages
       retention-days: 30
 
@@ -67,4 +67,3 @@ jobs:
     with:
       test-params: -k "not webworker" src packages/micropip  packages/fpcast-test packages/sharedlib-test-py/ packages/cpp-exceptions-test/
       artifacts-prefix-build: core
-      retention-days: 1
