@@ -1,5 +1,4 @@
 name: test
-description: "Run Pyodide test suite"
 
 on:
   workflow_call:
@@ -7,6 +6,14 @@ on:
       test-params:
         description: "Parameters to pass to pytest"
         required: true
+      runner:
+        description: "Runner parameter passed to pytest-pyodide"
+        required: false
+        default: "playwright"
+      runtime:
+        description: "Runtime parameter passed to pytest-pyodide"
+        required: false
+        default: "chrome"
       cache-dir:
         description: "pytest cache directory"
         required: false
@@ -27,11 +34,6 @@ jobs:
   test:
     env:
       DISPLAY: :99
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [playwright]
-        browser: [firefox, chrome]
     steps:
       - name: Download dist artifact
         uses: actions/download-artifact@v2
@@ -64,14 +66,14 @@ jobs:
 
       - name: run tests
         env:
-          BROWSER: ${{ matrix.browser }}
-          RUNNER: ${{ matrix.runner }}
+          RUNTIME: ${{ inputs.runtime }}
+          RUNNER: ${{ inputs.runner }}
         shell: bash -l {0}
         run: |
           ls -lh
           ls -lh dist/
           tools/pytest_wrapper.py \
-            --runtime="${BROWSER}-no-host" \
+            --runtime="${RUNTIME}-no-host" \
             --runner "${RUNNER}" \
             --verbose \
             --durations 50 \
