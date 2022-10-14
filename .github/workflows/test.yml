@@ -5,26 +5,32 @@ on:
     inputs:
       test-params:
         description: "Parameters to pass to pytest"
+        type: string
         required: true
       runner:
         description: "Runner parameter passed to pytest-pyodide"
         required: false
+        type: string
         default: "playwright"
       runtime:
         description: "Runtime parameter passed to pytest-pyodide"
         required: false
+        type: string
         default: "chrome"
       cache-dir:
         description: "pytest cache directory"
         required: false
+        type: string
         default: ""
       artifacts-prefix-build:
         description: "prefix for build artifacts"
         required: false
+        type: string
         default: "pyodide"
       retention-days:
         description: "days to keep dist artifacts"
-        reqruied: false
+        required: false
+        type: number
         default: 1
 
 permissions:

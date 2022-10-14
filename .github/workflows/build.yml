@@ -15,14 +15,17 @@ on:
         default: "core"
       artifacts-prefix-prev:
         description: "prefix for artifacts for previous build"
+        type: string
         required: false
         default: ""
       artifacts-prefix:
         description: "prefix for artifacts for current build"
+        type: string
         required: false
         default: "pyodide"
       retention-days:
         description: "days to keep dist artifacts"
+        type: number
         reqruied: false
         default: 1
 
