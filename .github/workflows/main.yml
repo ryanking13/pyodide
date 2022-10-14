@@ -12,19 +12,10 @@ env:
   CCACHE_DIR: /tmp/ccache
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v3
-        with:
-          python-version: 3.10.2
-      - uses: pre-commit/action@v2.0.3
-
   test-python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: actions/setup-python@v3
         with:
@@ -50,47 +41,35 @@ jobs:
           fail_ci_if_error: false
 
   build-core:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/workflows/composite_build
-        with:
-          packages: core
-          artifacts-prefix-prev: ""
-          artifacts-prefix: core
-          retention-days: 1
+    uses: ./.github/workflows/build.yml
+    with:
+      packages: core
+      artifacts-prefix-prev: ""
+      artifacts-prefix: core
+      retention-days: 30
 
   build-no-numpy-dependents:
-    runs-on: ubuntu-latest
     needs: [build-core]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/workflows/composite_build
-        with:
-          packages: no-numpy-dependents
-          artifacts-prefix-prev: core
-          artifacts-prefix: no-numpy-dependents
-          retention-days: 1
+    uses: ./.github/workflows/build.yml
+    with:
+      packages: no-numpy-dependents
+      artifacts-prefix-prev: core
+      artifacts-prefix: no-numpy-dependents
+      retention-days: 30
 
   build-packages:
-    runs-on: ubuntu-latest
     needs: [build-no-numpy-dependents]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/workflows/composite_build
-        with:
-          packages: "*"
-          artifacts-prev: no-numpy-dependents
-          artifacts-prefix: packages
-          retention-days: 1
+    uses: ./.github/workflows/build.yml
+    with:
+      packages: "*"
+      artifacts-prev: no-numpy-dependents
+      artifacts-prefix: packages
+      retention-days: 30
 
   test-core:
-    runs-on: ubuntu-latest
     needs: [build-core]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/workflows/composite_build
-        with:
-          test-params: -k "not webworker" src packages/micropip  packages/fpcast-test packages/sharedlib-test-py/ packages/cpp-exceptions-test/
-          artifacts-prefix-build: core
-          retention-days: 1
+    uses: ./.github/workflows/test.yml
+    with:
+      test-params: -k "not webworker" src packages/micropip  packages/fpcast-test packages/sharedlib-test-py/ packages/cpp-exceptions-test/
+      artifacts-prefix-build: core
+      retention-days: 1
