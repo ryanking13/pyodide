@@ -99,12 +99,6 @@ jobs:
           make -C cpython
           ccache -s
 
-      - name: Clean up workspace
-        shell: bash -l {0}
-        run: |
-          rm -rf cpython/{build,downloads}
-          rm -rf emsdk/emsdk/binaryen
-
       - name: build Pyodide and packages
         shell: bash -l {0}
         run: |
@@ -114,14 +108,16 @@ jobs:
           PYODIDE_PACKAGES="${{ inputs.packages }}" make
           ccache -s
 
-      - name: Clean up package source files
-        shell: baseh -l {0}
-        run: |
-          cd packages && find **/build ! -name '.packaged' -type f -exec rm -f {} +
-
       - name: check-size
         shell: bash -l {0}
         run: ls -lh dist/
+
+      - name: Clean up workspace before storing artifacts
+        shell: bash -l {0}
+        run: |
+          rm -rf cpython/{build,downloads}
+          rm -rf emsdk/emsdk/binaryen
+          cd packages && find **/build ! -name '.packaged' -type f -exec rm -f {} +
 
       - name: Store build artifacts
         uses: actions/upload-artifact@v2
