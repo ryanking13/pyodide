@@ -120,7 +120,7 @@ jobs:
           cd packages && find **/build ! -name '.packaged' -type f -exec rm -f {} +
 
       - name: Store build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.artifacts-prefix }}-build
           path: |
@@ -129,7 +129,7 @@ jobs:
           retention-days: 1
 
       - name: Store dist artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.artifacts-prefix }}-dist
           path: ./dist/
