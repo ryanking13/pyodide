@@ -45,18 +45,18 @@ jobs:
             /tmp/ccache
           key: ${{ hashFiles('Makefile.envs') }}-v20211025-
 
-      - name: Download build artifact from previous the build step
+      - name: Download build artifact from the previous build step
         if: ${{ inputs.artifacts-prefix-prev != '' }}
         uses: actions/download-artifact@v2
         with:
           name: ${{ inputs.artifacts-prefix-prev }}-build
           path: ./
 
-      - name: Extract build artifact from previous the build step
+      - name: Extract build artifact from the previous build step
         if: ${{ inputs.artifacts-prefix-prev != '' }}
         shell: bash -l {0}
         run: |
-          tar -xf build.tar
+          tar -xf build.tar.gz
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
@@ -85,6 +85,7 @@ jobs:
           echo "PYODIDE_JOBS=$(nproc)" >> $GITHUB_ENV
 
       - name: Build emsdk
+        if: ${{ inputs.artifacts-prefix-prev == '' }}
         shell: bash -l {0}
         run: |
           which ccache
@@ -94,6 +95,7 @@ jobs:
           ccache -s
 
       - name: Build Cpython
+        if: ${{ inputs.artifacts-prefix-prev == '' }}
         shell: bash -l {0}
         run: |
           # This is necessary to use the ccache from emsdk
@@ -128,13 +130,13 @@ jobs:
       - name: Compress build artifacts
         shell: bash -l {0}
         run: |
-          tar -cf ${{ github.workspace }}/build.tar packages cpython emsdk
+          tar -czf ${{ github.workspace }}/build.tar.gz packages cpython emsdk
 
       - name: Store build artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.artifacts-prefix }}-build
-          path: ${{ github.workspace }}/build.tar
+          path: ${{ github.workspace }}/build.tar.gz
           retention-days: 1
 
       - name: Store dist artifacts
