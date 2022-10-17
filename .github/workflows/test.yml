@@ -46,7 +46,7 @@ jobs:
           path: ./dist/
 
       - name: Download pytest cache
-        if: inputs.cache-dir != ""
+        if: ${{ inputs.cache-dir != '' }}
         uses: actions/download-artifact@v2
         with:
           name: ${{ inputs.cache-dir }}-pytest-cache
@@ -102,7 +102,7 @@ jobs:
         if: always()
 
       - name: Upload pytest cache
-        if: inputs.cache-dir != ""
+        if: ${{ inputs.cache-dir != '' }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ inputs.cache-dir }}-pytest-cache
