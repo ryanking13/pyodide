@@ -52,6 +52,12 @@ jobs:
           name: ${{ inputs.artifacts-prefix-prev }}-build
           path: ./
 
+      - name: Extract build artifact from previous the build step
+        if: ${{ inputs.artifacts-prefix-prev != '' }}
+        shell: bash -l {0}
+        run: |
+          tar -xf build.tar
+
       - uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: pyodide-env
@@ -119,18 +125,21 @@ jobs:
           rm -rf emsdk/emsdk/binaryen
           cd packages && find **/build ! -name '.packaged' -type f -exec rm -f {} +
 
+      - name: Compress build artifacts
+        sheel: bash -l {0}
+        run: |
+          tar -cf ${{ github.workspace }}/build.tar packages cpython emsdk
+
       - name: Store build artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.artifacts-prefix }}-build
-          path: |
-            ./
-            !.git
+          path: ${{ github.workspace }}/build.tar
           retention-days: 1
 
       - name: Store dist artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.artifacts-prefix }}-dist
-          path: ./dist/
+          path: ${{ github.workspace }}/dist/
           retention-days: ${{ inputs.retention-days }}
