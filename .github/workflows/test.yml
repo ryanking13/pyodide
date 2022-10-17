@@ -16,7 +16,7 @@ on:
         description: "Runtime parameter passed to pytest-pyodide"
         required: false
         type: string
-        default: "chrome"
+        default: "chrome-no-host"
       cache-dir:
         description: "pytest cache directory"
         required: false
@@ -44,6 +44,14 @@ jobs:
         with:
           name: ${{ inputs.artifacts-prefix-build }}-dist
           path: ./dist/
+
+      - name: Download pytest cache
+        if: inputs.cache-dir != ""
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ inputs.cache-dir }}-pytest-cache
+          path: ./.pytest_cache/
+          if-no-files-found: warn
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
@@ -77,7 +85,7 @@ jobs:
           ls -lh
           ls -lh dist/
           tools/pytest_wrapper.py \
-            --runtime="${RUNTIME}-no-host" \
+            --runtime="${RUNTIME}" \
             --runner "${RUNNER}" \
             --verbose \
             --durations 50 \
@@ -92,3 +100,11 @@ jobs:
         with:
           paths: "test-results/*.xml"
         if: always()
+
+      - name: Upload pytest cache
+        if: inputs.cache-dir != ""
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ inputs.cache-dir }}-pytest-cache
+          path: ./.test_cache/
+          retention-days: 1
