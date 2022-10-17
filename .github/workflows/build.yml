@@ -126,7 +126,7 @@ jobs:
           cd packages && find **/build ! -name '.packaged' -type f -exec rm -f {} +
 
       - name: Compress build artifacts
-        sheel: bash -l {0}
+        shell: bash -l {0}
         run: |
           tar -cf ${{ github.workspace }}/build.tar packages cpython emsdk
 
