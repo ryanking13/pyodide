@@ -47,7 +47,7 @@ jobs:
     needs: [build-core]
     uses: ./.github/workflows/build.yml
     with:
-      packages: no-numpy-dependents
+      packages: "*,no-numpy-dependents"
       artifacts-prefix-prev: core
       artifacts-prefix: no-numpy-dependents
       retention-days: 30
