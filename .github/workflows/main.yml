@@ -106,7 +106,7 @@ jobs:
       matrix:
         runner: [playwright]
         runtime: [chrome-no-host, firefox-no-host]
-    needs: [build-numpy-dependents, test-no-numpy-dependents]
+    needs: [build-packages, test-no-numpy-dependents]
     uses: ./.github/workflows/test.yml
     with:
       runner: ${{ matrix.runner }}
