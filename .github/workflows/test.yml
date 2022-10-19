@@ -51,7 +51,6 @@ jobs:
         with:
           name: ${{ inputs.cache-dir }}-pytest-cache
           path: ./.pytest_cache/
-          if-no-files-found: warn
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
