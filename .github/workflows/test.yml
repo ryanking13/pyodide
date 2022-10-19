@@ -72,8 +72,8 @@ jobs:
           fi
           echo "pytest cache dir: $CACHE_DIR"
           # FIXME: playwright 1.23.0 has unknown performance issue on firefox
-          # pip install "playwright<1.23.0" && python -m playwright install
-          python -m playwright install
+          pip install "playwright<1.23.0" && python -m playwright install
+          # python -m playwright install
 
       - name: run tests
         env:
