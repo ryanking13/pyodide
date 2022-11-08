@@ -29,7 +29,7 @@ if sys.base_prefix == sys.prefix:
     TARGETS = {"site": SITE_PACKAGES, "lib": STD_LIB, "dynlib": Path("/usr/lib")}
 else:
     # in a virtualenv
-    # Better not put stuff into /usr/lib or /lib/python3.10! For now let's stick
+    # Better not put stuff into /usr/lib or /lib/python3.11! For now let's stick
     # everyone into SITE_PACKAGES in this case
     TARGETS = {"site": SITE_PACKAGES, "lib": SITE_PACKAGES, "dynlib": SITE_PACKAGES}
 
