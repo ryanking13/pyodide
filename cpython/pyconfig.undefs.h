@@ -29,7 +29,6 @@
 #undef HAVE_SYS_IOCTL_H
 
 /* Unsupported functionality */
-#undef HAVE_PTHREAD_H
 #undef HAVE_MEMFD_CREATE
 
 #define CONFIG_32
