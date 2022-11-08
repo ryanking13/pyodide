@@ -8,7 +8,7 @@
 
 array arraymodule.c	# array objects
 audioop audioop.c	# Operations on audio samples
-math mathmodule.c _math.c # -lm # math library functions, e.g. sin()
+math mathmodule.c # -lm # math library functions, e.g. sin()
 cmath cmathmodule.c # complex math functions
 _contextvars _contextvarsmodule.c
 _struct _struct.c	# binary structure packing/unpacking
@@ -32,7 +32,7 @@ binascii binascii.c
 
 zlib zlibmodule.c
 
-pyexpat expat/xmlparse.c expat/xmlrole.c expat/xmltok.c pyexpat.c -I$(srcdir)/Modules/expat -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI -DXML_POOR_ENTROPY
+pyexpat pyexpat.c -I$(srcdir)/Modules/expat -DHAVE_EXPAT_CONFIG_H -DUSE_PYEXPAT_CAPI -DXML_POOR_ENTROPY
 
 _sha1 sha1module.c
 _sha256 sha256module.c
@@ -59,6 +59,9 @@ _codecs_tw cjkcodecs/_codecs_tw.c
 
 _lsprof _lsprof.c rotatingtree.c
 
-_decimal _decimal/_decimal.c _decimal/libmpdec/basearith.c _decimal/libmpdec/constants.c _decimal/libmpdec/context.c _decimal/libmpdec/convolute.c _decimal/libmpdec/crt.c _decimal/libmpdec/difradix2.c _decimal/libmpdec/fnt.c _decimal/libmpdec/fourstep.c _decimal/libmpdec/io.c _decimal/libmpdec/mpalloc.c _decimal/libmpdec/mpdecimal.c _decimal/libmpdec/numbertheory.c _decimal/libmpdec/sixstep.c _decimal/libmpdec/transpose.c -I$(srcdir)/Modules/_decimal/libmpdec
+_decimal _decimal/_decimal.c -I$(srcdir)/Modules/_decimal/libmpdec
 mmap mmapmodule.c
 _xxsubinterpreters _xxsubinterpretersmodule.c
+
+*disabled*
+pwd
