@@ -76,10 +76,9 @@ $(BUILD)/Makefile: $(BUILD)/.patched
 	#   30 on systems with 16 bit pointers. WASM has 32 bit pointers so Python
 	#   will default to the size 15 digits but WASM has native 64 bit arithmetic
 	#   so it is more efficient to use 30 bit digits.
-	cp config.site $(BUILD)/
 	( \
 		cd $(BUILD); \
-		CONFIG_SITE=./config.site READELF=true emconfigure \
+		CONFIG_SITE=./Tools/wasm/config.site-wasm32-emscripten READELF=true emconfigure \
 		  ./configure \
 			  CFLAGS="${PYTHON_CFLAGS}" \
 			  CPPFLAGS="-sUSE_BZIP2=1 -sUSE_ZLIB=1" \
@@ -89,9 +88,11 @@ $(BUILD)/Makefile: $(BUILD)/.patched
 			  --disable-ipv6 \
 			  --enable-big-digits=30 \
 			  --enable-optimizations \
-			  --host=wasm32-unknown-emscripten\
+			  --host=wasm32-unknown-emscripten \
 			  --build=$(shell $(BUILD)/config.guess) \
 			  --prefix=$(INSTALL)  \
+			  --with-emscripten-target=browser \
+			  --with-build-python=python$(PYMAJOR).$(PYMINOR) \
 	)
 
 
