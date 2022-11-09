@@ -14,7 +14,6 @@ build:
     cd $CPYTHONBUILD
 
     export FILES=(
-      "Modules/_sqlite/cache.c"
       "Modules/_sqlite/connection.c"
       "Modules/_sqlite/cursor.c"
       "Modules/_sqlite/microprotocols.c"
