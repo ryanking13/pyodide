@@ -34,6 +34,8 @@
 #   system function that doesn't behave as one would expect.
 # - crash-chrome: Same as crash but only affecting Chrome
 # - crash-firefox: Same as crash but only affecting Firefox
+- leakers.test_ctypes
+- leakers.test_selftype
 - test___all__:
     xfail: multiprocessing
 - test___future__
@@ -55,8 +57,6 @@
 - test_asyncgen:
     xfail: async
 - test_asynchat:
-    xfail: async
-- test_asyncio.test_asyncio_waitfor:
     xfail: async
 - test_asyncio.test_base_events:
     xfail: async
@@ -89,25 +89,29 @@
     xfail: async
 - test_asyncio.test_sock_lowlevel:
     xfail: async
+- test_asyncio.test_ssl
 - test_asyncio.test_sslproto
 - test_asyncio.test_streams:
     xfail: async
 - test_asyncio.test_subprocess:
     xfail: async
+- test_asyncio.test_taskgroups
 - test_asyncio.test_tasks:
     xfail: async
 - test_asyncio.test_threads:
     xfail: async
+- test_asyncio.test_timeouts
 - test_asyncio.test_transports
 - test_asyncio.test_unix_events:
     xfail: async
+- test_asyncio.test_waitfor
 - test_asyncio.test_windows_events
 - test_asyncio.test_windows_utils
 - test_asyncore:
     xfail: async
 - test_atexit:
     skip:
-      - test_general # fork
+    - test_general   # fork
 - test_audioop
 - test_audit:
     xfail: all tests fork
@@ -118,7 +122,6 @@
 - test_bigaddrspace
 - test_bigmem
 - test_binascii
-- test_binhex
 - test_binop
 - test_bisect
 - test_bool
@@ -126,18 +129,20 @@
 - test_bufio
 - test_builtin:
     skip:
-      - test_open_non_inheritable
-      - test_compile_top_level_await
+    - test_open_non_inheritable
+    - test_compile_top_level_await
 - test_bytes
 - test_bz2:
     skip:
-      - testThreading
+    - testThreading
 - test_c_locale_coercion
 - test_calendar
 - test_call
 - test_capi:
     xfail: hangs
-- test_cgi
+- test_cgi:
+    skip:
+    - test_log  # invalid seek
 - test_cgitb
 - test_charmapcodec
 - test_check_c_globals
@@ -175,7 +180,7 @@
 - test_contains
 - test_context:
     skip:
-      - test_context_threads_1
+    - test_context_threads_1
 - test_contextlib
 - test_contextlib_async:
     xfail: async
@@ -184,6 +189,7 @@
     xfail: dbm
 - test_coroutines:
     xfail: async
+- test_cppext
 - test_cprofile
 - test_crashers
 - test_crypt
@@ -191,7 +197,7 @@
 - test_ctypes:
     skip:
       # See https://bugs.python.org/issue47208
-      - test_callback_too_many_args
+    - test_callback_too_many_args
 - test_curses
 - test_dataclasses
 - test_datetime:
@@ -207,9 +213,9 @@
 - test_decimal:
     xfail-chrome: times out
     skip:
-      - test_context_subclassing # floating point
-      - test_none_args # Some context issue?
-      - test_threading
+    - test_context_subclassing   # floating point
+    - test_none_args   # Some context issue?
+    - test_threading
 - test_decorators
 - test_defaultdict
 - test_deque
@@ -243,7 +249,7 @@
 - test_email.test_defect_handling
 - test_email.test_email:
     skip:
-      - test_make_msgid_collisions # fork
+    - test_make_msgid_collisions   # fork
 - test_email.test_generator
 - test_email.test_headerregistry
 - test_email.test_inversion
@@ -254,16 +260,18 @@
 - test_email.test_utils
 - test_embed:
     skip:
-      - test_set_config # fork
+    - test_set_config   # fork
 - test_ensurepip:
     xfail: nonsense
 - test_enum:
     skip:
-      - test_unique_composite # fork
+    - test_unique_composite   # fork
 - test_enumerate
 - test_eof
 - test_epoll
 - test_errno
+- test_except_star
+- test_exception_group
 - test_exception_hierarchy
 - test_exception_variations
 - test_exceptions:
@@ -272,16 +280,18 @@
 - test_faulthandler:
     skip:
       # fork
-      - test_disabled_by_default
-      - test_sys_xoptions
-      - test_env_var
+    - test_disabled_by_default
+    - test_sys_xoptions
+    - test_env_var
 - test_fcntl
 - test_file
 - test_file_eintr:
     xfail: fork
 - test_filecmp
 - test_fileinput
-- test_fileio
+- test_fileio:
+    xfail-chrome: maximum call stack size exceeded
+- test_fileutils
 - test_finalization
 - test_float
 - test_flufl
@@ -298,15 +308,15 @@
 - test_funcattrs
 - test_functools:
     skip:
-      - "*threaded*"
+    - '*threaded*'
 - test_future
 - test_future3
 - test_future4
 - test_future5
 - test_gc:
     skip:
-      - test_garbage_at_shutdown
-      - test_trashcan_threads
+    - test_garbage_at_shutdown
+    - test_trashcan_threads
 - test_gdb
 - test_generator_stop
 - test_generators
@@ -315,9 +325,9 @@
 - test_genericclass
 - test_genericpath:
     skip:
-      - test_samefile_on_link
-      - test_samestat_on_link
-      - test_exists_fd
+    - test_samefile_on_link
+    - test_samestat_on_link
+    - test_exists_fd
 - test_genexps
 - test_getargs2
 - test_getopt
@@ -326,7 +336,7 @@
 - test_glob:
     skip:
       # RecursionError: maximum recursion depth exceeded while calling a Python object
-      - test_selflink
+    - test_selflink
 - test_global
 - test_grammar
 - test_graphlib
@@ -335,7 +345,7 @@
 - test_hash
 - test_hashlib:
     skip:
-      - test_threaded_hashing
+    - test_threaded_hashing
 - test_heapq
 - test_hmac
 - test_html
@@ -345,9 +355,9 @@
 - test_httplib:
     skip:
       # sockets
-      - test_response_fileno
-      - testHTTPConnectionSourceAddress
-      - testTimeoutAttribute
+    - test_response_fileno
+    - testHTTPConnectionSourceAddress
+    - testTimeoutAttribute
 - test_httpservers:
     xfail: threads
 - test_idle
@@ -356,7 +366,7 @@
 - test_imghdr
 - test_imp:
     xfail:
-      - test_unencodeable # fails perioically
+    - test_unencodeable   # fails perioically
 - test_importlib.builtin.test_finder
 - test_importlib.builtin.test_loader
 - test_importlib.extension.test_case_sensitivity
@@ -381,6 +391,8 @@
 - test_importlib.source.test_source_encoding
 - test_importlib.test_abc
 - test_importlib.test_api
+- test_importlib.test_compatibilty_files
+- test_importlib.test_contents
 - test_importlib.test_files
 - test_importlib.test_lazy
 - test_importlib.test_locks:
@@ -403,14 +415,14 @@
 - test_index
 - test_inspect:
     skip:
-      - test_nested_class_definition_inside_async_function
+    - test_nested_class_definition_inside_async_function
 - test_int
 - test_int_literal
 - test_interpreters:
     skip:
       # threads
-      - test_main
-      - "*thread*"
+    - test_main
+    - '*thread*'
 - test_io:
     xfail: segfault-outofmemory in test_large_file_ops ("Array buffer allocation failed")
     # The remaining test_io tests seem to hang too
@@ -451,7 +463,7 @@
 - test_lltrace
 - test_locale:
     skip:
-      - "*diacritic*"
+    - '*diacritic*'
 - test_logging:
     xfail: threading
 - test_long
@@ -461,7 +473,7 @@
     xfail: fs
 - test_mailcap:
     skip:
-      - test_test # not sure why it fails...
+    - test_test   # not sure why it fails...
 - test_marshal
 - test_math
 - test_memoryio
@@ -471,11 +483,11 @@
 - test_minidom
 - test_mmap:
     skip:
-      - "*large*" # segfault-outofmemory Invalid typed array length: 6442450944"
+    - '*large*'   # segfault-outofmemory Invalid typed array length: 6442450944"
         # resizing mmap doesn't work (raises [Errno 48] Out of memory)
-      - test_basic
-      - test_offset
-      - test_resize_past_pos
+    - test_basic
+    - test_offset
+    - test_resize_past_pos
 - test_module
 - test_modulefinder
 - test_msilib
@@ -491,11 +503,11 @@
 - test_ntpath:
     # same set of failures as in test_posixpath
     skip:
-      - test_exists_fd
-      - test_samestat_on_link
-      - test_samefile_on_link
-      - test_sameopenfile
-      - test_nonascii_abspath
+    - test_exists_fd
+    - test_samestat_on_link
+    - test_samefile_on_link
+    - test_sameopenfile
+    - test_nonascii_abspath
 - test_numeric_tower
 - test_opcache
 - test_opcodes
@@ -512,13 +524,13 @@
 - test_osx_env
 - test_pathlib:
     skip:
-      - test_hardlink_to
-      - test_home
-      - test_link_to
-      - test_is_socket_true
-      - test_readlink
-      - test_open_mode
-      - test_touch_mode
+    - test_hardlink_to
+    - test_home
+    - test_link_to
+    - test_is_socket_true
+    - test_readlink
+    - test_open_mode
+    - test_touch_mode
 - test_patma
 - test_pdb:
     xfail: 21/51 use subprocess
@@ -527,6 +539,7 @@
 - test_peg_generator.test_first_sets
 - test_peg_generator.test_grammar_validator
 - test_peg_generator.test_pegen
+- test_pep646_syntax
 - test_pickle:
     xfail: dbm
 - test_picklebuffer
@@ -537,8 +550,8 @@
 - test_pkgutil
 - test_platform:
     skip:
-      - test_architecture_via_symlink # fork
-      - test_libc_ver # Can't open sys.executable
+    - test_architecture_via_symlink   # fork
+    - test_libc_ver   # Can't open sys.executable
 - test_plistlib
 - test_poll:
     xfail: subprocess
@@ -551,10 +564,10 @@
     xfail: missing pwd module
 - test_posixpath:
     skip:
-      - test_exists_fd
-      - test_samestat_on_link
-      - test_samefile_on_link
-      - test_nonascii_abspath
+    - test_exists_fd
+    - test_samestat_on_link
+    - test_samefile_on_link
+    - test_nonascii_abspath
 - test_pow
 - test_pprint
 - test_print
@@ -566,28 +579,28 @@
 - test_pwd
 - test_py_compile:
     skip:
-      - test_stdin # fork
+    - test_stdin   # fork
 - test_pyclbr
 - test_pydoc:
     skip:
-      - test_server # fork
-      - test_synopsis_sourceless # expects __pycache__
+    - test_server   # fork
+    - test_synopsis_sourceless   # expects __pycache__
 - test_pyexpat
 - test_queue:
     # More than half of these make a thread
     xfail: threads
 - test_quopri:
     skip:
-      - test_scriptdecode # fork
-      - test_scriptencode # fork
+    - test_scriptdecode   # fork
+    - test_scriptencode   # fork
 - test_raise
 - test_random:
     skip:
-      - test_after_fork
+    - test_after_fork
 - test_range
 - test_re:
     skip:
-      - "*locale*"
+    - '*locale*'
 - test_readline
 - test_regrtest:
     xfail: All tests fork
@@ -601,17 +614,17 @@
     xfail: socket
 - test_runpy:
     skip:
-      - test_pymain_run* # fork
+    - test_pymain_run*   # fork
 - test_sax
 - test_sched:
     skip:
-      - "*concurrent" # threads
+    - '*concurrent'   # threads
 - test_scope
 - test_script_helper
 - test_secrets
 - test_select:
     skip:
-      - test_select # fork
+    - test_select   # fork
 - test_selectors:
     xfail: networking
 - test_set
@@ -621,15 +634,15 @@
 - test_shlex
 - test_shutil:
     skip:
-      - test_copy2_symlinks
-      - test_copy_symlinks
-      - test_copymode_symlink_to_symlink
-      - test_copystat_symlinks
-      - test_dont_copy_file_onto_link_to_itself
-      - test_copytree_dangling_symlinks
-      - test_copytree_symlink_dir
-      - test_copytree_symlinks
-      - test_copyfile_nonexistent_dir
+    - test_copy2_symlinks
+    - test_copy_symlinks
+    - test_copymode_symlink_to_symlink
+    - test_copystat_symlinks
+    - test_dont_copy_file_onto_link_to_itself
+    - test_copytree_dangling_symlinks
+    - test_copytree_symlink_dir
+    - test_copytree_symlinks
+    - test_copyfile_nonexistent_dir
 
 - test_signal:
     xfail: emscripten signals implementation isn't very complete
@@ -648,26 +661,36 @@
 - test_sort
 - test_source_encoding:
     skip:
-      - test_20731
+    - test_20731
 - test_spwd
 - test_sqlite:
     skip:
-      - "*ThreadTests*"
-      - test_ctx_mgr_rollback_if_commit_failed
+    - '*ThreadTests*'
+    - test_ctx_mgr_rollback_if_commit_failed
+- test_sqlite3.test_backup
+- test_sqlite3.test_dbapi
+- test_sqlite3.test_dump
+- test_sqlite3.test_factory
+- test_sqlite3.test_hooks
+- test_sqlite3.test_regression
+- test_sqlite3.test_transactions
+- test_sqlite3.test_types
+- test_sqlite3.test_userfunctions
 - test_ssl
-- test_startfile
+- test_stable_abi_ctypes
 - test_stat
 - test_statistics
+- test_startfile
 - test_strftime:
     skip:
-      - test_strftime # strftime has some bugs
+    - test_strftime   # strftime has some bugs
 - test_string
 - test_string_literals
 - test_stringprep
 - test_strptime:
     skip:
-      - test_week_of_year_and_day_of_week_calculation
-      - test_timezone
+    - test_week_of_year_and_day_of_week_calculation
+    - test_timezone
 - test_strtod
 - test_struct
 - test_structmembers
@@ -694,21 +717,21 @@
 - test_tabnanny
 - test_tarfile:
     skip:
-      - test_file_mode
-      - "test_extractall*"
-      - test_link_size
-      - test_dereference_hardlink
-      - test_add_hardlink
-      - test_add_twice
+    - test_file_mode
+    - test_extractall*
+    - test_link_size
+    - test_dereference_hardlink
+    - test_add_hardlink
+    - test_add_twice
 - test_tcl
 - test_telnetlib:
     xfail: 7/19 fail with sockets
 - test_tempfile:
     skip:
-      - test_non_directory # setup failure Errno 2: Permission Denied
-      - test_process_awareness # fork
-      - test_truncate_with_size_parameter # setup failure FileNotFoundError: [Errno 44] No such file or directory
-      - test_noinherit # self.assertEqual(os.get_inheritable(file.fd), False) ==> AssertionError: True != False
+    - test_non_directory   # setup failure Errno 2: Permission Denied
+    - test_process_awareness   # fork
+    - test_truncate_with_size_parameter   # setup failure FileNotFoundError: [Errno 44] No such file or directory
+    - test_noinherit   # self.assertEqual(os.get_inheritable(file.fd), False) ==> AssertionError: True != False
 - test_textwrap
 - test_thread:
     xfail: threading
@@ -722,18 +745,22 @@
     xfail: threading
 - test_time:
     skip:
-      - test_thread_time # setup failure: OSError: [Errno 28] Invalid argument
-      - test_time_ns_type # setup failure: OSError: [Errno 28] Invalid argument
-      - test_localtime_timezone # pyodide.asm.js:4222 AssertionError: 'Pacific Standard Time' != 'Pacific S'
-      - test_4dyear # '%4Y' != '0001'
-      - test_ctime # '1941' != '-100'
-      - test_monotonic # self.assertTrue(0.450 <= dt) fails
+    - test_thread_time   # setup failure: OSError: [Errno 28] Invalid argument
+    - test_time_ns_type   # setup failure: OSError: [Errno 28] Invalid argument
+    - test_localtime_timezone   # pyodide.asm.js:4222 AssertionError: 'Pacific Standard Time' != 'Pacific S'
+    - test_4dyear   # '%4Y' != '0001'
+    - test_ctime   # '1941' != '-100'
+    - test_monotonic   # self.assertTrue(0.450 <= dt) fails
 - test_timeit
 - test_timeout
 - test_tix
 - test_tk
 - test_tokenize
+- test_tomllib.test_data
+- test_tomllib.test_error
+- test_tomllib.test_misc
 - test_tools.test_fixcid
+- test_tools.test_freeze
 - test_tools.test_gprof2html
 - test_tools.test_i18n
 - test_tools.test_lll
@@ -747,7 +774,7 @@
     xfail: slow, sometimes times out
 - test_traceback:
     skip:
-      - test_encoded_file # fork
+    - test_encoded_file   # fork
 - test_tracemalloc
 - test_ttk_guionly
 - test_ttk_textonly
@@ -755,10 +782,12 @@
     xfail-chrome: times out
 - test_turtle
 - test_type_annotations
+- test_type_cache
 - test_type_comments
 - test_typechecks
 - test_types
-- test_typing
+- test_typing:
+    xfail-chrome: maximum call stack size exceeded
 - test_ucn
 - test_unary
 - test_unicode
@@ -769,15 +798,15 @@
 - test_unicodedata
 - test_unittest:
     skip:
-      - "*async*"
-      - "*Interrupt*"
-      - "*Handler*"
+    - '*async*'
+    - '*Interrupt*'
+    - '*Handler*'
         # os.kill
-      - testTwoResults
-      - test_warnings
-      - testRemoveResult
+    - testTwoResults
+    - test_warnings
+    - testRemoveResult
         # fork
-      - testSelectedTestNamesFunctionalTest
+    - testSelectedTestNamesFunctionalTest
 - test_univnewlines
 - test_unpack
 - test_unpack_ex
@@ -786,7 +815,7 @@
     xfail-safari: crashes the runtime
 - test_urllib2:
     skip:
-      - test_http_body_pipe # fork
+    - test_http_body_pipe   # fork
 - test_urllib2_localnet:
     xfail: socket
 - test_urllib2net
@@ -801,7 +830,7 @@
 - test_uu
 - test_uuid:
     skip:
-      - testIssue8621
+    - testIssue8621
 - test_venv:
     xfail: nonsense
 - test_wait3:
@@ -821,8 +850,10 @@
 - test_wsgiref
 - test_xdrlib
 - test_xml_dom_minicompat
-- test_xml_etree
-- test_xml_etree_c
+- test_xml_etree:
+    xfail-chrome: maximum call stack size exceeded
+- test_xml_etree_c:
+    xfail-chrome: maximum call stack size exceeded
 - test_xmlrpc:
     xfail: networking
 - test_xmlrpc_net

@@ -13,11 +13,7 @@ from sys import version_info
 from typing import Any
 
 PYODIDE_ROOT = Path(__file__).parents[2]
-LIB_DIR = (
-    PYODIDE_ROOT / "cpython/installs"
-    f"/python-{version_info.major}.{version_info.minor}.{version_info.micro}"
-    f"/lib/python{version_info.major}.{version_info.minor}"
-)
+LIB_DIR = PYODIDE_ROOT / "cpython/build" / f"Python-{version_info.major}.{version_info.minor}.{version_info.micro}/Lib"
 
 PYTHON_TESTS_YAML = Path(__file__).parent / "python_tests.yaml"
 
