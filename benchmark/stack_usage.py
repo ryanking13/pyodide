@@ -17,14 +17,15 @@ def print_info():
     )
     printed_heading = False
 
-    def print_info(*args):
+    def _print_info(*args):
         nonlocal printed_heading
+        nonlocal fmt
         if not printed_heading:
             printed_heading = True
             print("## " + "  ".join(headings))
         print(fmt.format(*args))
 
-    yield print_info
+    yield _print_info
 
 
 @pytest.mark.skip_refcount_check
