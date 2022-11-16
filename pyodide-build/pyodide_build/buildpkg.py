@@ -449,6 +449,9 @@ def compile(
     if build_metadata.package_type != "package":
         return
 
+    if build_metadata.no_pypa_build:
+        return
+
     build_env_ctx = pywasmcross.get_build_env(
         env=bash_runner.env,
         pkgname=name,

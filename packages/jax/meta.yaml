@@ -1,0 +1,23 @@
+package:
+  name: jaxlib
+  version: 0.3.25
+  top-level:
+    - jaxlib
+source:
+  url: https://github.com/google/jax/archive/refs/tags/jax-v0.3.25.tar.gz
+  sha256: 49e8ce88ddd7dd0de86116c9d75d98a577a9061377ec423493fbac5ea29f79f0
+requirements:
+  run:
+    - numpy
+    - scipy
+  host:
+    - numpy
+build:
+  _no_pypa_build: true
+  cross-script: |
+    python build/build.py
+about:
+  home: https://github.com/google/jax
+  PyPI: https://pypi.org/project/jax
+  summary: Differentiate, compile, and transform Numpy code.
+  license: Apache-2.0

@@ -95,6 +95,7 @@ class _BuildSpec(BaseModel):
     vendor_sharedlib: bool = Field(False, alias="vendor-sharedlib")
     cross_build_env: bool = Field(False, alias="cross-build-env")
     cross_build_files: list[str] = Field([], alias="cross-build-files")
+    no_pypa_build: bool = Field(False, alias="_no_pypa_build")
 
     class Config:
         extra = pydantic.Extra.forbid
