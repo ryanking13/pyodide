@@ -19,7 +19,7 @@ def print_info():
 
     def _print_info(*args):
         nonlocal printed_heading
-        nonlocal fmt
+
         if not printed_heading:
             printed_heading = True
             print("## " + "  ".join(headings))
@@ -76,6 +76,10 @@ def test_stack_usage(selenium, print_info):
     # "py_depth",
     # "js_depth/py_usage",
     # "js_depth/py_depth",
+
+    if res is None:
+        selenium.clean_logs()
+        pytest.exit("Stack usage test failed")
 
     print_info(selenium.browser, *res)
 
