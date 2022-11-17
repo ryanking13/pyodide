@@ -24,4 +24,4 @@ build:
     emmake make install
 
     mkdir -p dist
-    cp ${WASM_LIBRARY_DIR}/lib/libgeos* dist/
+    cp -d ${WASM_LIBRARY_DIR}/lib/libgeos* dist/

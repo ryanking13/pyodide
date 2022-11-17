@@ -40,10 +40,14 @@ function createDynlibFS(lib: string, searchDirs?: string[]): LoadDynlibFS {
     for (const dir of libSearchDirs) {
       const fullPath = Module.PATH.join2(dir, path);
       if (Module.FS.findObject(fullPath) !== null) {
-        return fullPath;
+        path = fullPath;
+        break;
       }
     }
-    return path;
+
+    const node = Module.FS.lookupPath(path, { follow: true });
+
+    return node.path;
   };
 
   let readFile: ReadFileType = (path: string) =>

@@ -52,4 +52,4 @@ build:
 
     emmake make -j ${PYODIDE_JOBS:-3} install
 
-    cp -P ${WASM_LIBRARY_DIR}/lib/libhdf* ${DISTDIR}
+    cp -d ${WASM_LIBRARY_DIR}/lib/libhdf* ${DISTDIR}
