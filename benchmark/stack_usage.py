@@ -81,6 +81,7 @@ def test_stack_usage(selenium, print_info):
         selenium.clean_logs()
         pytest.exit("Stack usage test failed")
 
+    print(res)
     print_info(selenium.browser, *res)
 
     selenium.clean_logs()
