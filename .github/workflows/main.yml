@@ -96,6 +96,7 @@ jobs:
           environment-file: environment.yml
           environment-name: pyodide-env
           channels: conda-forge
+          channel-priority: flexible
           cache-env: true
           cache-env-key: v20221201-${{ hashFiles('environment.yml') }}-${{ runner.os }}
 
