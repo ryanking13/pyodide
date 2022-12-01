@@ -71,7 +71,12 @@ jobs:
           fail_ci_if_error: false
 
   build-core:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
     env:
       EMSDK_NUM_CORES: 3
       EMCC_CORES: 3
