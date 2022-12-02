@@ -71,13 +71,20 @@ jobs:
           fail_ci_if_error: false
 
   build-core:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
     env:
       EMSDK_NUM_CORES: 3
       EMCC_CORES: 3
       PYODIDE_JOBS: 3
       CCACHE_DIR: /tmp/ccache
-
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
       - uses: actions/checkout@v2
 
@@ -88,36 +95,31 @@ jobs:
             /tmp/ccache
           key: ${{ hashFiles('Makefile.envs') }}-v20211025-
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - name: Install Conda environment with Micromamba
+        uses: mamba-org/provision-with-micromamba@v14
         with:
-          activate-environment: pyodide-env
-          python-version: 3.10.2
+          environment-file: environment.yml
+          environment-name: pyodide-env
           channels: conda-forge
+          channel-priority: flexible
+          cache-env: true
+          cache-env-key: v20221201-${{ hashFiles('environment.yml') }}-${{ runner.os }}
 
       - name: Check Python versions
-        shell: bash -l {0}
         run: |
           python --version
           which python
 
       - name: Install dependencies
-        shell: bash -l {0}
         run: |
           sudo apt install -y build-essential git
-          conda install -y nodejs ccache f2c pkg-config swig make patch pkg-config texinfo autoconf automake libtool
           pip install -r requirements.txt
 
       - name: Build emsdk
-        shell: bash -l {0}
         run: |
-          which ccache
-
-          ccache -z
           make -C emsdk
-          ccache -s
 
       - name: Build Cpython
-        shell: bash -l {0}
         run: |
           # This is necessary to use the ccache from emsdk
           source pyodide_env.sh
@@ -129,7 +131,6 @@ jobs:
           ccache -s
 
       - name: build Pyodide core + numpy
-        shell: bash -l {0}
         run: |
           # This is necessary to use the ccache from emsdk
           source pyodide_env.sh
@@ -151,13 +152,16 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DISPLAY: :99
+    defaults:
+      run:
+        shell: bash -l {0}
 
     needs: [build-core]
     strategy:
       fail-fast: false
       matrix:
         runner: [playwright]
-        browser: [firefox, chrome]
+        browser: [chrome]
 
     steps:
       - uses: actions/checkout@v2
@@ -168,25 +172,24 @@ jobs:
           name: core-build
           path: ./dist/
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - name: Install Conda environment with Micromamba
+        uses: mamba-org/provision-with-micromamba@v14
         with:
-          activate-environment: pyodide-env
-          python-version: 3.10.2
+          environment-file: environment.yml
+          environment-name: pyodide-env
           channels: conda-forge
+          cache-env: true
+          cache-env-key: v20221201-${{ hashFiles('environment.yml') }}-${{ runner.os }}
 
       - name: install test requirements
-        shell: bash -l {0}
         run: |
           pip install -r requirements.txt
           pip install -e ./pyodide-build
-          # FIXME: playwright 1.23.0 has unknown performance issue on firefox
-          pip install "playwright<1.23.0" && python -m playwright install
 
       - name: run core tests
         env:
           BROWSER: ${{ matrix.browser }}
           RUNNER: ${{ matrix.runner }}
-        shell: bash -l {0}
         run: |
           ls -lh
           ls -lh dist/
@@ -201,7 +204,6 @@ jobs:
         env:
           BROWSER: ${{ matrix.browser }}
           RUNNER: ${{ matrix.runner }}
-        shell: bash -l {0}
         run: |
           ls -lh
           ls -lh dist/
