@@ -1,0 +1,16 @@
+name: pyodide-env
+channels:
+  - defaults
+dependencies:
+  - python=3.10.2
+  - pip
+  - nodejs
+  - pkg-config
+  - make
+  - patch
+  - sed
+  - autoconf
+  - automake
+  - libtool
+  - pip:
+      - cmake # cmake in conda-forge has an issue when building ccache-emscripten
