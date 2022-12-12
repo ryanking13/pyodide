@@ -178,7 +178,6 @@ if IN_SPHINX:
         str(base_dir / "pyodide-build"),
         str(base_dir / "docs/sphinx_pyodide"),
         str(base_dir / "src/py"),
-        str(base_dir / "packages/micropip/src"),
     ]
     sys.path = path_dirs + sys.path
 
@@ -186,7 +185,6 @@ if IN_SPHINX:
 
     JavaScriptDomain.roles["func"] = JSXRefRole()
 
-    import micropip  # noqa: F401
     import pyodide
 
     # We hacked it so that autodoc will look for submodules, but only if we import
