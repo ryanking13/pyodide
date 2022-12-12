@@ -33,6 +33,7 @@ else:
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
     "sphinxcontrib.napoleon",
     "myst_parser",
     "sphinx_js",
@@ -45,6 +46,9 @@ extensions = [
 ]
 
 myst_enable_extensions = ["substitution"]
+
+myst_url_schemes = ["http", "https"]
+intersphinx_mapping = {"micropip": ("https://micropip.pyodide.org/en/stable/", None)}
 
 js_language = "typescript"
 jsdoc_config_path = "../src/js/tsconfig.json"
@@ -225,6 +229,16 @@ if IN_SPHINX:
 
     for module in mock_modules:
         sys.modules[module] = mock.Mock()
+
+    import markupsafe
+
+    def soft_unicode(s: Any) -> str:
+        return markupsafe.soft_str(s)
+
+    # sphinx-js uses old Jinja2 v2, which is not compatible with markupsafe>=2.1.0
+    # Sadly some other dependencies rely on markupsafe>=2.1.0
+    # so we have to monkeypatch markupsafe.
+    markupsafe.soft_unicode = soft_unicode
 
 
 # https://github.com/sphinx-doc/sphinx/issues/4054

@@ -1,7 +1,6 @@
 autodocsumm
 docutils==0.16
 myst-parser
-packaging   # required by micropip at import time
 sphinx>=4.4.0
 sphinx-argparse-cli~=1.6.0
 sphinx_book_theme
@@ -10,5 +9,5 @@ sphinx-issues==2.0.0
 sphinx-js==3.1
 sphinx-version-warning~=1.1.2
 sphinx-panels
-markupsafe<2.1.0
+markupsafe
 pydantic

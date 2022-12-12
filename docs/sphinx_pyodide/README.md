@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # Sphinx-Pyodide
 
 This package is a special sphinx extension for Pyodide's documentation.
