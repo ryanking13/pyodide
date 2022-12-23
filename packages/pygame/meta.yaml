@@ -1,0 +1,39 @@
+package:
+  name: pygame
+  version: 2.1.3.dev8
+  top-level:
+    - pygame
+source:
+  url: https://files.pythonhosted.org/packages/f0/34/fc13b596b637cc59961ed606447a27a96d31bfda3ca965b73ebd16a02750/pygame-2.1.3.dev8.tar.gz
+  sha256: 94d98328e73d56be35cc3ae8e31f9d95fbce4f3dca6a74f05c58f4c5ef18c33d
+build:
+  script: |
+    # embuilder build sdl2 sdl2_mixer sdl2_ttf freetype --pic
+    export SDL_CONFIG=$(em-config CACHE)/sysroot/bin/sdl2-config
+  cflags: |
+    -sRELOCATABLE=1
+    -DBUILD_STATIC
+    -DSDL_NO_COMPAT
+    -ferror-limit=1
+    -sUSE_SDL=2
+    -sUSE_FREETYPE=1
+    -sUSE_LIBJPEG=1
+    -sUSE_LIBPNG=1
+    -I$(WASM_LIBRARY_DIR)/include/SDL2
+  ldflags: |
+    -sRELOCATABLE=1
+    -sUSE_SDL=2
+    -sUSE_FREETYPE=1
+    -sUSE_LIBJPEG=1
+    -sUSE_LIBPNG=1
+    -L$(WASM_LIBRARY_DIR)/lib
+    -lSDL2
+
+requirements:
+  host:
+    - libsdl2_image
+about:
+  home: https://www.pygame.org
+  PyPI: https://pypi.org/project/pygame
+  summary: Python Game Development
+  license: LGPL
