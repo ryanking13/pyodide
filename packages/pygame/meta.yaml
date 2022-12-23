@@ -16,6 +16,8 @@ build:
     -DSDL_NO_COMPAT
     -ferror-limit=1
     -sUSE_SDL=2
+    -sUSE_SDL_MIXER=2
+    -sUSE_SDL_TTF=2
     -sUSE_FREETYPE=1
     -sUSE_LIBJPEG=1
     -sUSE_LIBPNG=1
@@ -23,6 +25,8 @@ build:
   ldflags: |
     -sRELOCATABLE=1
     -sUSE_SDL=2
+    -sUSE_SDL_MIXER=2
+    -sUSE_SDL_TTF=2
     -sUSE_FREETYPE=1
     -sUSE_LIBJPEG=1
     -sUSE_LIBPNG=1
