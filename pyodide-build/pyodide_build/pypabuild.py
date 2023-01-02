@@ -1,4 +1,3 @@
-import os
 import shutil
 import sys
 import traceback
@@ -19,6 +18,7 @@ from packaging.requirements import Requirement
 
 from .common import (
     get_hostsitepackages,
+    get_make_flag,
     get_pyversion,
     get_unisolated_packages,
     replace_env,
@@ -31,17 +31,30 @@ AVOIDED_REQUIREMENTS = [
 ]
 
 
+def copy_sysconfigdata(env_site_packages: Path) -> None:
+    """
+    Copy target sysconfigdata into build env for cross-compilation
+    """
+    target_sysconfigdata_name = get_make_flag("SYSCONFIG_NAME")
+    target_sysconfigdata_path = (
+        Path(get_make_flag("TARGETINSTALLDIR"))
+        / f"sysconfigdata/{target_sysconfigdata_name}.py"
+    )
+
+    if not target_sysconfigdata_path.exists():
+        raise RuntimeError(f"sysconfigdata {target_sysconfigdata_path} not exists")
+
+    env_site_packages.mkdir(parents=True, exist_ok=True)
+    shutil.copy(target_sysconfigdata_path, env_site_packages)
+
+
 def symlink_unisolated_packages(env: IsolatedEnv) -> None:
     pyversion = get_pyversion()
     site_packages_path = f"lib/{pyversion}/site-packages"
     env_site_packages = Path(env.path) / site_packages_path  # type: ignore[attr-defined]
-    sysconfigdata_name = os.environ["SYSCONFIG_NAME"]
-    sysconfigdata_path = (
-        Path(os.environ["TARGETINSTALLDIR"]) / f"sysconfigdata/{sysconfigdata_name}.py"
-    )
 
-    env_site_packages.mkdir(parents=True, exist_ok=True)
-    shutil.copy(sysconfigdata_path, env_site_packages)
+    copy_sysconfigdata(env_site_packages)
+
     host_site_packages = Path(get_hostsitepackages())
     for name in get_unisolated_packages():
         for path in chain(

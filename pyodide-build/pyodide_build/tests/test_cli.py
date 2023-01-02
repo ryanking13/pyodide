@@ -3,11 +3,11 @@ import shutil
 from pathlib import Path
 
 import pytest
+import typer  # type: ignore[import]
 from typer.testing import CliRunner  # type: ignore[import]
 
-from pyodide_build import __version__ as pyodide_build_version
-from pyodide_build import common
-from pyodide_build.cli import build, config, skeleton
+from pyodide_build import common, pypabuild
+from pyodide_build.cli import build, build_recipes, config, skeleton
 
 only_node = pytest.mark.xfail_browsers(
     chrome="node only", firefox="node only", safari="node only"
@@ -15,6 +15,14 @@ only_node = pytest.mark.xfail_browsers(
 
 
 runner = CliRunner()
+
+
+@pytest.fixture(scope="function")
+def monkeypatch_build(monkeypatch):
+    monkeypatch.setattr(common, "ALWAYS_PACKAGES", {})
+    monkeypatch.setattr(
+        pypabuild, "copy_sysconfigdata", lambda *args, **kwargs: print("asdf")
+    )
 
 
 def test_skeleton_pypi(tmp_path):
@@ -58,18 +66,7 @@ def test_skeleton_pypi(tmp_path):
     assert "already exists" in str(result.exception)
 
 
-def test_build_recipe_with_pyodide(tmp_path, monkeypatch, request, runtime):
-    if runtime != "node":
-        pytest.xfail("node only")
-    test_build_recipe(tmp_path, monkeypatch, request)
-
-
-def test_build_recipe(tmp_path, monkeypatch, request):
-    if "dev" in pyodide_build_version:
-        if "EMSDK" not in os.environ or "PYODIDE_ROOT" not in os.environ:
-            pytest.skip(
-                reason="Can't build recipe in dev mode without building pyodide first"
-            )
+def test_build_recipe(tmp_path, monkeypatch_build, request):
     output_dir = tmp_path / "dist"
     recipe_dir = Path(__file__).parent / "_test_recipes"
 
@@ -80,15 +77,15 @@ def test_build_recipe(tmp_path, monkeypatch, request):
 
     pkgs_to_build = pkgs.keys() | {p for v in pkgs.values() for p in v}
 
-    monkeypatch.setattr(common, "ALWAYS_PACKAGES", {})
-
     for build_dir in recipe_dir.rglob("build"):
         shutil.rmtree(build_dir)
 
+    app = typer.Typer()
+    app.command()(build_recipes.recipe)
+
     result = runner.invoke(
-        build.app,
+        app,
         [
-            "recipe",
             *pkgs.keys(),
             "--recipe-dir",
             recipe_dir,
@@ -137,18 +134,8 @@ def test_config_get(cfg_name, env_var):
     assert result.stdout.strip() == common.get_make_flag(env_var)
 
 
-def test_fetch_or_build_pypi_with_pyodide(tmp_path, runtime):
-    if runtime != "node":
-        pytest.xfail("node only")
-    test_fetch_or_build_pypi(tmp_path)
+def test_fetch_or_build_pypi(tmp_path, monkeypatch_build):
 
-
-def test_fetch_or_build_pypi(tmp_path):
-    if "dev" in pyodide_build_version:
-        if "EMSDK" not in os.environ or "PYODIDE_ROOT" not in os.environ:
-            pytest.skip(
-                reason="Can't build recipe in dev mode without building pyodide first. Skipping test"
-            )
     output_dir = tmp_path / "dist"
     # one pure-python package (doesn't need building) and one sdist package (needs building)
     pkgs = ["pytest-pyodide", "pycryptodome==3.15.0"]
@@ -157,7 +144,7 @@ def test_fetch_or_build_pypi(tmp_path):
     for p in pkgs:
         result = runner.invoke(
             build.app,
-            ["main", p],
+            [p],
         )
         assert result.exit_code == 0, result.stdout
 
