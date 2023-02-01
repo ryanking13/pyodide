@@ -68,7 +68,11 @@ $(INSTALL)/lib/libffi.a :
 	mkdir -p $(INSTALL)/lib
 	cp $(FFIBUILD)/target/lib/libffi.a $(INSTALL)/lib/
 
-$(BUILD)/Makefile: $(BUILD)/.patched
+update-freeze-modules: freeze_modules.py
+	# Note: The directory of freeze_modules.py has been changed to Tools/build in Python 3.12.
+	cp freeze_modules.py $(BUILD)/Tools/scripts/
+
+$(BUILD)/Makefile: $(BUILD)/.patched update-freeze-modules
 	# --enable-big-digits=30 :
 	#   Python integers have "digits" of size 15 by default on systems with 32
 	#   bit pointers and size 30 on systems with 16 bit pointers. Python uses
@@ -102,6 +106,7 @@ $(BUILD)/$(LIB): $(BUILD)/Makefile $(BUILD)/pyconfig.h $(BUILD)/Modules/Setup.lo
 	cp Setup.local $(BUILD)/Modules/
 	( \
 		cd $(BUILD); \
+		make regen-frozen; \
 		emmake make CROSS_COMPILE=yes $(LIB) -j $${PYODIDE_JOBS:-3} \
 	)
 	touch $(BUILD)/$(LIB)
