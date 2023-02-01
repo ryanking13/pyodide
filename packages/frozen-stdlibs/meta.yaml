@@ -1,0 +1,42 @@
+package:
+  name: frozen-stdlibs
+  version: 1.0.0 # Nonsense
+  tag:
+    - always
+build:
+  type: cpython_module
+  script: |
+    mkdir dist
+    export DISTDIR=$(pwd)/dist
+    cd $CPYTHONBUILD/Lib
+
+    # import system
+
+    mkdir -p $DISTDIR/importlib
+    cp importlib/_bootstrap.py $DISTDIR/importlib
+    cp importlib/_bootstrap_external.py $DISTDIR/importlib
+
+    cp zipimport.py $DISTDIR
+
+    # stdlib - startup, without site (python -S)
+
+    cp abc.py $DISTDIR
+    cp codecs.py $DISTDIR
+    cp io.py $DISTDIR
+
+    # stdlib - startup, with site
+
+    cp _collections_abc.py $DISTDIR
+    cp _sitebuiltins.py $DISTDIR
+    cp genericpath.py $DISTDIR
+    cp ntpath.py $DISTDIR
+    cp posixpath.py $DISTDIR
+    cp os.py $DISTDIR
+    cp site.py $DISTDIR
+    cp stat.py $DISTDIR
+
+    # runpy - run module with -m
+
+    cp importlib/util.py $DISTDIR/importlib
+    cp importlib/machinery.py $DISTDIR/importlib
+    cp runpy.py $DISTDIR
