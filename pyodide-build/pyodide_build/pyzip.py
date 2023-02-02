@@ -35,10 +35,6 @@ UNVENDORED_FILES = (
     "_pydecimal.py",
     "pydoc_data",
     # Deepfrozen modules
-    "importlib/_bootstrap.py",
-    "importlib/_bootstrap_external.py",
-    "importlib/util.py",
-    "importlib/machinery.py",
     "zipimport.py",
     "abc.py",
     "codecs.py",

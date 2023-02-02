@@ -12,10 +12,6 @@ build:
 
     # import system
 
-    mkdir -p $DISTDIR/importlib
-    cp importlib/_bootstrap.py $DISTDIR/importlib
-    cp importlib/_bootstrap_external.py $DISTDIR/importlib
-
     cp zipimport.py $DISTDIR
 
     # stdlib - startup, without site (python -S)
@@ -37,6 +33,4 @@ build:
 
     # runpy - run module with -m
 
-    cp importlib/util.py $DISTDIR/importlib
-    cp importlib/machinery.py $DISTDIR/importlib
     cp runpy.py $DISTDIR
