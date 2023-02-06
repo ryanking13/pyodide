@@ -1627,6 +1627,46 @@ def test_relative_index_url(selenium, tmp_path):
 
 
 @pytest.mark.xfail_browsers(chrome="Node only", firefox="Node only", safari="Node only")
+def test_node_external_index_url(selenium):
+    import subprocess
+
+    from pytest_pyodide import spawn_web_server
+
+    version_result = subprocess.run(
+        ["node", "-v"], capture_output=True, encoding="utf8"
+    )
+    extra_node_args = []
+    if version_result.stdout.startswith("v14"):
+        extra_node_args.append("--experimental-wasm-bigint")
+
+    with spawn_web_server(pytest.pyodide_dist_dir) as server:
+        server_hostname, server_port, _ = server
+        url = f"http://{server_hostname}:{server_port}/"
+
+        result = subprocess.run(
+            [
+                "node",
+                *extra_node_args,
+                "-e",
+                rf"""
+                const loadPyodide = require("{pytest.pyodide_dist_dir}/pyodide.js").loadPyodide;
+                async function main(){{
+                    py = await loadPyodide({{indexURL: "{url}"}});
+                    console.log("\n");
+                    console.log(py._module.API.config.indexURL);
+                }}
+                main();
+                """,
+            ],
+            cwd=ROOT_PATH,
+            capture_output=True,
+            encoding="utf8",
+        )
+
+    assert result.stdout.strip().split("\n")[-1] == str(url) + "/"
+
+
+@pytest.mark.xfail_browsers(chrome="Node only", firefox="Node only", safari="Node only")
 def test_index_url_calculation_source_map(selenium):
     import os
 
