@@ -11,7 +11,6 @@ build:
   script: |
     mkdir dist
     export DISTDIR=$(pwd)/dist
-    cd $CPYTHONBUILD
 
     export FILES=(
       "Modules/_sqlite/blob.c"
@@ -26,6 +25,9 @@ build:
     )
 
     embuilder build --pic sqlite3
+
+    git clone https://github.com/python/cpython --depth 1 --branch v${PYVERSION}
+    cd cpython
 
     for file in "${FILES[@]}"; do
       emcc $STDLIB_MODULE_CFLAGS -c "${file}" -o "${file/.c/.o}"  \

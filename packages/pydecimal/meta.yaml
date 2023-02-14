@@ -10,6 +10,8 @@ build:
   script: |
     mkdir dist
     export DISTDIR=$(pwd)/dist
-    cd $CPYTHONBUILD
+
+    git clone https://github.com/python/cpython --depth 1 --branch v${PYVERSION}
+    cd cpython
 
     cp Lib/_pydecimal.py $DISTDIR

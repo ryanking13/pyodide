@@ -10,6 +10,8 @@ build:
   script: |
     mkdir dist
     export DISTDIR=$(pwd)/dist
-    cd $CPYTHONLIB
 
-    tar --exclude=__pycache__ -cf - distutils | tar -C $DISTDIR -xf -
+    git clone https://github.com/python/cpython --depth 1 --branch v${PYVERSION}
+    cd cpython/Lib
+
+    tar --exclude=__pycache__ --exclude=tests -cf - distutils | tar -C $DISTDIR -xf -

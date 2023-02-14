@@ -10,6 +10,8 @@ build:
   script: |
     mkdir dist
     export DISTDIR=$(pwd)/dist
-    cd $CPYTHONBUILD/Lib
+
+    git clone https://github.com/python/cpython --depth 1 --branch v${PYVERSION}
+    cd cpython/Lib
 
     tar --exclude=__pycache__ -cf - pydoc_data | tar -C $DISTDIR -xf -
