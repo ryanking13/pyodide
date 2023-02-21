@@ -102,10 +102,21 @@ jobs:
           python --version
           which python
 
-      - name: Install dependencies
+      - name: Install dependencies (ubuntu)
         shell: bash -l {0}
+        if:  ${{ contains(runner.os, 'ubuntu') }}
         run: |
           sudo apt install -y build-essential git xxd
+
+      - name: Install dependencies (macos)
+        shell: bash -l {0}
+        if:  ${{ contains(runner.os, 'macos') }}
+        run: |
+          brew install coreutils
+
+      - name: Install dependencies (common)
+        shell: bash -l {0}
+        run: |
           conda install -y nodejs ccache f2c pkg-config swig make patch pkg-config texinfo autoconf automake libtool
           pip install -r requirements.txt
 
