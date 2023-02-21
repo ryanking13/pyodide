@@ -21,8 +21,8 @@ all: $(INSTALL)/lib/$(LIB) $(INSTALL)/lib/libffi.a
 $(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules.txt
 	( \
 		cd $(BUILD); \
-		sed -i -e 's/libinstall:.*/libinstall:/' Makefile; \
-		sed -i '/MODOBJS=/s/$$/ $$(LIBMPDEC_OBJS) $$(LIBEXPAT_OBJS) /' Makefile; \
+		sed -i.bak -e 's/libinstall:.*/libinstall:/' Makefile && rm -f Makefile.bak; \
+		sed -i.bak -e '/MODOBJS=/s/$$/ $$(LIBMPDEC_OBJS) $$(LIBEXPAT_OBJS) /' Makefile && rm -f Makefile.bak; \
 		touch $(BUILD)/$(LIB) ; \
 		emmake make PYTHON_FOR_BUILD=$(HOSTPYTHON) CROSS_COMPILE=yes inclinstall libinstall $(LIB) -j $${PYODIDE_JOBS:-3} && \
 		cp $(LIB) $(INSTALL)/lib/ \

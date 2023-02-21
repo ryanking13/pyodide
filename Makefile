@@ -105,8 +105,8 @@ dist/pyodide.asm.js: \
    # There are 4821 of these and they have VERY VERY long names.
    # To show some stats on the symbols you can use the following:
    # cat dist/pyodide.asm.js | grep -ohE 'var _{0,5}.' | sort | uniq -c | sort -nr | head -n 20
-	sed -i -E 's/var __Z[^;]*;//g' dist/pyodide.asm.js
-	sed -i '1i "use strict";' dist/pyodide.asm.js
+	sed -i.bak -E 's/var __Z[^;]*;//g' dist/pyodide.asm.js && rm -f dist/pyodide.asm.js.bak
+	sed -i.bak -e '1i "use strict";' dist/pyodide.asm.js && rm -f dist/pyodide.asm.js.bak
 	# Remove last 6 lines of pyodide.asm.js, see issue #2282
 	# Hopefully we will remove this after emscripten fixes it, upstream issue
 	# emscripten-core/emscripten#16518
@@ -185,8 +185,8 @@ dist/python: src/templates/python
 
 .PHONY: dist/console.html
 dist/console.html: src/templates/console.html
-	cp $< $@
-	sed -i -e 's#{{ PYODIDE_BASE_URL }}#$(PYODIDE_BASE_URL)#g' $@
+	sed -e 's#{{ PYODIDE_BASE_URL }}#$(PYODIDE_BASE_URL)#g' $< > $@
+	
 
 .PHONY: dist/webworker.js
 dist/webworker.js: src/templates/webworker.js
