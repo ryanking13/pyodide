@@ -169,9 +169,9 @@ src/js/pyproxy.gen.ts : src/core/pyproxy.* src/core/*.h
 	echo "// It uses the macros defined in core/pyproxy.c" >> $@
 	echo "// Do not edit it directly!" >> $@
 	cat src/core/pyproxy.ts | \
-		sed '/^\/\/\s*pyodide-skip/,/^\/\/\s*end-pyodide-skip/d' | \
+		sed -e '/^\/\/\s*pyodide-skip/,/^\/\/\s*end-pyodide-skip/d' | \
 		$(CC) -E -C -P -imacros src/core/pyproxy.c $(MAIN_MODULE_CFLAGS) - | \
-		sed 's/^#pragma clang.*//g' \
+		sed -e 's/^#pragma clang.*//g' \
 		>> $@
 
 dist/test.html: src/templates/test.html
@@ -186,7 +186,7 @@ dist/python: src/templates/python
 .PHONY: dist/console.html
 dist/console.html: src/templates/console.html
 	sed -e 's#{{ PYODIDE_BASE_URL }}#$(PYODIDE_BASE_URL)#g' $< > $@
-	
+
 
 .PHONY: dist/webworker.js
 dist/webworker.js: src/templates/webworker.js
