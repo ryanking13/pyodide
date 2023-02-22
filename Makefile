@@ -106,7 +106,7 @@ dist/pyodide.asm.js: \
    # To show some stats on the symbols you can use the following:
    # cat dist/pyodide.asm.js | grep -ohE 'var _{0,5}.' | sort | uniq -c | sort -nr | head -n 20
 	sed -i.bak -E 's/var __Z[^;]*;//g' dist/pyodide.asm.js && rm -f dist/pyodide.asm.js.bak
-	sed -i.bak -e '1i "use strict";' dist/pyodide.asm.js && rm -f dist/pyodide.asm.js.bak
+	sed -i.bak -e '1s/^/"use strict";\n/' dist/pyodide.asm.js && rm -f dist/pyodide.asm.js.bak
 	# Remove last 6 lines of pyodide.asm.js, see issue #2282
 	# Hopefully we will remove this after emscripten fixes it, upstream issue
 	# emscripten-core/emscripten#16518
