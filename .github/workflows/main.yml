@@ -81,14 +81,14 @@ jobs:
       CCACHE_DIR: /tmp/ccache
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Cache ccache output
         uses: actions/cache@v2
         with:
           path: |
             /tmp/ccache
-          key: ${{ hashFiles('Makefile.envs') }}-v20211025-
+          key: ${{ hashFiles('Makefile.envs') }}-${{ runner.os }}-v20211025-
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
@@ -104,13 +104,13 @@ jobs:
 
       - name: Install dependencies (ubuntu)
         shell: bash -l {0}
-        if:  ${{ contains(runner.os, 'ubuntu') }}
+        if: ${{ contains(runner.os, 'ubuntu') }}
         run: |
           sudo apt install -y build-essential git xxd
 
       - name: Install dependencies (macos)
         shell: bash -l {0}
-        if:  ${{ contains(runner.os, 'macos') }}
+        if: ${{ contains(runner.os, 'macos') }}
         run: |
           brew install coreutils
 
@@ -160,12 +160,12 @@ jobs:
       - name: Store artifacts build
         uses: actions/upload-artifact@v2
         with:
-          name: core-build
+          name: core-build-${{ runner.os }}
           path: ./dist/
           retention-days: 60
 
   test-core:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     env:
       DISPLAY: :99
 
@@ -173,6 +173,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         runner: [playwright]
         browser: [chrome]
 
@@ -182,7 +183,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v2
         with:
-          name: core-build
+          name: core-build-${{ runner.os }}
           path: ./dist/
 
       - uses: conda-incubator/setup-miniconda@v2
