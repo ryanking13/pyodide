@@ -174,6 +174,10 @@ src/js/pyproxy.gen.ts : src/core/pyproxy.* src/core/*.h
 		sed -e 's/^#pragma clang.*//g' \
 		>> $@
 
+	echo ////////////////////////////////
+	cat $@
+	echo ///////////////////////////////
+
 dist/test.html: src/templates/test.html
 	cp $< $@
 
