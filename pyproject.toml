@@ -37,6 +37,8 @@ module = [
   "tomllib",
   "tomli",
   "typer",
+  "pytest_pyodide",
+  "loky",
 ]
 ignore_missing_imports = true
 
