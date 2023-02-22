@@ -57,7 +57,7 @@ $(TARBALL):
 
 $(BUILD)/.patched: $(TARBALL)
 	[ -d $(BUILD) ] || (mkdir -p $(dir $(BUILD)); tar -C $(dir $(BUILD)) -xf $(TARBALL))
-	cat patches/*.patch | (cd $(BUILD) ; patch -p1)
+	ls patches/*.patch | xargs -I{} cat {} | (cd $(BUILD) ; patch -p1)
 	touch $@
 
 $(INSTALL)/lib/libffi.a :
