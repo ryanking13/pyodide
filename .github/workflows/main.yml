@@ -119,6 +119,11 @@ jobs:
         run: |
           conda install -y nodejs ccache f2c pkg-config swig make pkg-config texinfo autoconf automake libtool
           pip install -r requirements.txt
+          
+          sed --version
+          sed --help
+          patch --version
+          patch --help
 
       - name: Build emsdk
         shell: bash -l {0}
