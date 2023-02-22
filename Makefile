@@ -169,7 +169,7 @@ src/js/pyproxy.gen.ts : src/core/pyproxy.* src/core/*.h
 	echo "// It uses the macros defined in core/pyproxy.c" >> $@
 	echo "// Do not edit it directly!" >> $@
 	cat src/core/pyproxy.ts | \
-		sed -e '/^\/\/\s*pyodide-skip/,/^\/\/\s*end-pyodide-skip/d' | \
+		sed -E '/^\/\/[[:space:]]*pyodide-skip/,/^\/\/[[:space:]]*end-pyodide-skip/d' | \
 		$(CC) -E -C -P -imacros src/core/pyproxy.c $(MAIN_MODULE_CFLAGS) - | \
 		sed -e 's/^#pragma clang.*//g' \
 		>> $@
