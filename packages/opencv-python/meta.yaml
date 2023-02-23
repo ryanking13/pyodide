@@ -19,6 +19,7 @@ source:
       ]
   patches:
     - patches/0001-Enable-file-system.patch
+    - patches/0002-Include-emscripten-version.h-header.patch
 
 requirements:
   run:

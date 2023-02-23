@@ -1,0 +1,26 @@
+From 9fda1b1439c8a994b7c04548e3230cb4358a91dc Mon Sep 17 00:00:00 2001
+From: ryanking13 <def6488@gmail.com>
+Date: Thu, 23 Feb 2023 08:45:46 +0000
+Subject: [PATCH 1/1] Include emscripten/version.h header
+
+Since Emscripten 3.1.23, __EMSCRIPTEN_major__ macros are not available
+by default, and must be included from emscripten/version.h header.
+---
+ modules/core/include/opencv2/core/hal/intrin_wasm.hpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/modules/core/include/opencv2/core/hal/intrin_wasm.hpp b/modules/core/include/opencv2/core/hal/intrin_wasm.hpp
+index b4178af8b7..db3cb2a9ae 100644
+--- a/modules/core/include/opencv2/core/hal/intrin_wasm.hpp
++++ b/modules/core/include/opencv2/core/hal/intrin_wasm.hpp
+@@ -8,6 +8,7 @@
+ #include <limits>
+ #include <cstring>
+ #include <algorithm>
++#include <emscripten/version.h>
+ #include "opencv2/core/saturate.hpp"
+ 
+ #define CV_SIMD128 1
+-- 
+2.25.1
+
