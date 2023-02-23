@@ -35,6 +35,7 @@ build:
     -s USE_LIBJPEG=1
     -s USE_LIBPNG=1
     -DOPENCV_HAVE_FILESYSTEM_SUPPORT=1
+    -msimd128
   ldflags: |
     -ljpeg
     -lz
