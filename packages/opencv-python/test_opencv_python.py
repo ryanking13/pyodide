@@ -559,3 +559,25 @@ def test_calib3d_chessboard(selenium):
 
     compare_func = compare_func_handle(selenium)
     run(selenium, compare_func, original_img, ref_chessboard)
+
+
+@run_in_pyodide(packages=["opencv-python"])
+def test_simd(selenium):
+    # When running this test, run with `pytest -rP` to see the stdout
+    import cv2 as cv
+    import numpy as np
+    import timeit
+
+    img = np.random.randint(0, 255, size=(640, 640, 3), dtype=np.uint8)
+
+    cv.setUseOptimized(False)
+
+    assert cv.useOptimized() is False, "Optimization is not disabled"
+
+    print(timeit.timeit(lambda: cv.medianBlur(img, 10), number=100))
+
+    cv.setUseOptimized(True)
+
+    assert cv.useOptimized() is True, "Optimization is not enabled"
+
+    print(timeit.timeit(lambda: cv.medianBlur(img, 10), number=100))
