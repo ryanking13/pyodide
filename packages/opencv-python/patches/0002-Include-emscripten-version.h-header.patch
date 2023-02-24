@@ -11,8 +11,8 @@ by default, and must be included from emscripten/version.h header.
 
 diff --git a/modules/core/include/opencv2/core/hal/intrin_wasm.hpp b/modules/core/include/opencv2/core/hal/intrin_wasm.hpp
 index b4178af8b7..db3cb2a9ae 100644
---- a/modules/core/include/opencv2/core/hal/intrin_wasm.hpp
-+++ b/modules/core/include/opencv2/core/hal/intrin_wasm.hpp
+--- a/opencv/modules/core/include/opencv2/core/hal/intrin_wasm.hpp
++++ b/opencv/modules/core/include/opencv2/core/hal/intrin_wasm.hpp
 @@ -8,6 +8,7 @@
  #include <limits>
  #include <cstring>
