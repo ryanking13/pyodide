@@ -159,7 +159,10 @@ function installStdlib(Module: Module, stdlibURL: string) {
  * @private
  */
 export function initializeFileSystem(Module: Module, config: ConfigType) {
-  installStdlib(Module, config.indexURL + "python_stdlib.zip");
+  const stdlibFileName = config.compiled
+    ? "python_stdlib_pyc.zip"
+    : "python_stdlib.zip";
+  installStdlib(Module, config.indexURL + stdlibFileName);
   setHomeDirectory(Module, config.homedir);
   mountLocalDirectories(Module, config._node_mounts);
   Module.preRun.push(() => initializeNativeFS(Module));

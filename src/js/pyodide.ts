@@ -204,6 +204,7 @@ export type ConfigType = {
   stdout?: (msg: string) => void;
   stderr?: (msg: string) => void;
   jsglobals?: object;
+  compiled?: boolean;
   args: string[];
   _node_mounts: string[];
 };
@@ -264,6 +265,10 @@ export async function loadPyodide(
      */
     jsglobals?: object;
     /**
+     * Whether to use the compiled version of the Python standard library.
+     */
+    compiled?: boolean;
+    /**
      * Command line arguments to pass to Python on startup. See `Python command
      * line interface options
      * <https://docs.python.org/3.10/using/cmdline.html#interface-options>`_ for
@@ -290,6 +295,7 @@ export async function loadPyodide(
     stdin: globalThis.prompt ? globalThis.prompt : undefined,
     homedir: "/home/pyodide",
     lockFileURL: indexURL! + "repodata.json",
+    compiled: true,
     args: [],
     _node_mounts: [],
   };

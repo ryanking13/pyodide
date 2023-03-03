@@ -181,7 +181,8 @@ pyodide_build: ./pyodide-build/pyodide_build/**
 	which pyodide >/dev/null
 
 dist/python_stdlib.zip: pyodide_build $(CPYTHONLIB)
-	pyodide create-zipfile $(CPYTHONLIB) --output $@
+	pyodide create-zipfile $(CPYTHONLIB) --no-pycompile --output dist/python_stdlib.zip
+	pyodide create-zipfile $(CPYTHONLIB) --pycompile --output dist/python_stdlib_pyc.zip
 
 dist/test.html: src/templates/test.html
 	cp $< $@
