@@ -296,34 +296,10 @@ def search_pyodide_root(curdir: str | Path, *, max_depth: int = 5) -> Path:
     )
 
 
-def init_environment() -> None:
-    if os.environ.get("__LOADED_PYODIDE_ENV"):
-        return
-    os.environ["__LOADED_PYODIDE_ENV"] = "1"
-    # If we are building docs, we don't need to know the PYODIDE_ROOT
-    if "sphinx" in sys.modules:
-        os.environ["PYODIDE_ROOT"] = ""
-
-    if "PYODIDE_ROOT" in os.environ:
-        os.environ["PYODIDE_ROOT"] = str(Path(os.environ["PYODIDE_ROOT"]).resolve())
-    else:
-        os.environ["PYODIDE_ROOT"] = str(search_pyodide_root(os.getcwd()))
-
-    os.environ.update(get_make_environment_vars())
-    try:
-        hostsitepackages = get_hostsitepackages()
-        pythonpath = [
-            hostsitepackages,
-        ]
-        os.environ["PYTHONPATH"] = ":".join(pythonpath)
-    except KeyError:
-        pass
-    os.environ["BASH_ENV"] = ""
-    get_unisolated_packages()
-
-
 @functools.cache
 def get_pyodide_root() -> Path:
+    from ._build_env import init_environment
+
     init_environment()
     return Path(os.environ["PYODIDE_ROOT"])
 
