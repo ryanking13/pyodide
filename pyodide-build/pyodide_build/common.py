@@ -223,6 +223,12 @@ def get_make_environment_vars() -> dict[str, str]:
         capture_output=True,
         text=True,
     )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Failed to load environment variables from Makefile.envs: {result.stderr}"
+        )
+
     for line in result.stdout.splitlines():
         equalPos = line.find("=")
         if equalPos != -1:
