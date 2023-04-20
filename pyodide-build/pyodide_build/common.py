@@ -433,6 +433,7 @@ def make_zip_archive(
     archive_path: Path,
     input_dir: Path,
     compression_level: int = 6,
+    glob: str = "*",
 ) -> None:
     """Create a zip archive out of a input folder
 
@@ -444,6 +445,8 @@ def make_zip_archive(
        input dir to compress
     compression_level
        compression level of the resulting zip file.
+    glob
+       glob pattern to select files to compress
     """
     if compression_level > 0:
         compression = zipfile.ZIP_DEFLATED
@@ -453,7 +456,7 @@ def make_zip_archive(
     with zipfile.ZipFile(
         archive_path, "w", compression=compression, compresslevel=compression_level
     ) as zf:
-        for file in input_dir.rglob("*"):
+        for file in input_dir.rglob(glob):
             zf.write(file, file.relative_to(input_dir))
 
 

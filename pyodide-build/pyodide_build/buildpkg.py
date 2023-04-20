@@ -781,16 +781,7 @@ def _build_package_inner(
         src_dist_dir.mkdir(exist_ok=True, parents=True)
         run_script(build_dir, srcpath, build_metadata, bash_runner)
 
-        if package_type == "static_library":
-            # Nothing needs to be done for a static library
-            pass
-        elif package_type in ("shared_library", "cpython_module"):
-            # If shared library, we copy .so files to dist_dir
-            # and create a zip archive of the .so files
-            shutil.rmtree(dist_dir, ignore_errors=True)
-            dist_dir.mkdir(parents=True)
-            make_zip_archive(dist_dir / f"{src_dir_name}.zip", src_dist_dir)
-        else:  # wheel
+        if package_type == "package":
             if not finished_wheel:
                 compile(
                     name,
@@ -805,6 +796,41 @@ def _build_package_inner(
             )
             shutil.rmtree(dist_dir, ignore_errors=True)
             shutil.copytree(src_dist_dir, dist_dir)
+
+        else:
+            if package_type in ("static_library", "shared_library"):
+                # Install libraries to common location so they can be
+                # used by other packages.
+
+                # If the dist directory is empty, mostly likely the user
+                # didn't set the correct prefix in the recipe.
+                if next(src_dist_dir.iterdir(), None) is None:
+                    raise RuntimeError(
+                        f"Expected to find library files in {src_dist_dir}, "
+                        "but that directory is empty."
+                    )
+
+                wasm_library_dir = bash_runner.env["WASM_LIBRARY_DIR"]
+                shutil.copytree(src_dist_dir, wasm_library_dir, dirs_exist_ok=True)
+
+            if package_type == ("shared_library"):
+                # If shared library, we copy .so files to dist_dir
+                # and create a zip archive of the .so files.
+                shutil.rmtree(dist_dir, ignore_errors=True)
+                dist_dir.mkdir(parents=True)
+                make_zip_archive(
+                    dist_dir / f"{src_dir_name}.zip", src_dist_dir / "lib", glob="*.so"
+                )
+
+            elif package_type == "cpython_module":
+                # Unvendored standard libraries are a special case.
+                # We treat them similar to shared libraries, but it
+                # can include Python files in addition to .so files.
+                shutil.rmtree(dist_dir, ignore_errors=True)
+                dist_dir.mkdir(parents=True)
+                make_zip_archive(
+                    dist_dir / f"{src_dir_name}.zip", src_dist_dir, glob="*"
+                )
 
         create_packaged_token(build_dir)
 
