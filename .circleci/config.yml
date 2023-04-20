@@ -545,19 +545,6 @@ jobs:
             PYODIDE_BASE_URL="https://cdn.jsdelivr.net/pyodide/dev/full/" make dist/console.html
 
       - run:
-          name: Deploy to S3
-          command: |
-            python3 tools/deploy_s3.py dist/ "dev/full/" --bucket "pyodide-cdn2.iodide.io" --cache-control 'max-age=3600, public' --rm-remote-prefix
-      - run:
-          name: Deploy debug version to S3
-          command: |
-            python3 tools/deploy_s3.py dist-debug/ "dev/debug/" --bucket "pyodide-cdn2.iodide.io" --cache-control 'max-age=3600, public' --rm-remote-prefix
-      - run:
-          name: Deploy pyc version to S3
-          command: |
-            python3 tools/deploy_s3.py dist-pyc/ "dev/pyc/" --bucket "pyodide-cdn2.iodide.io" --cache-control 'max-age=3600, public' --rm-remote-prefix
-
-      - run:
           # Unlike the release version, we upload the dev version to S3 not to GitHub.
           name: Deploy release files to S3
           command: |
@@ -872,8 +859,3 @@ workflows:
             - build-pyodide-debug
             - create-xbuild-env
             - build-test-pyc-packages
-          filters:
-            branches:
-              only: main
-          context:
-            - s3-deployment
