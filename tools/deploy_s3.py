@@ -111,15 +111,22 @@ def deploy_to_s3_main(
             raise typer.Exit()
 
         with open(file_path, "rb") as fh_in:
-            # Use gzip compression for storage. This only impacts storage on
-            # AWS and transfer between S3 and the CDN. It has no impact on the
-            # compression received by the end user (since the CDN re-compresses
-            # files).
-            fh_compressed = io.BytesIO()
-            with gzip.GzipFile(fileobj=fh_compressed, mode="wb") as gzip_file:
-                shutil.copyfileobj(fh_in, gzip_file)
+            compressed = file_path.suffix in (".gz", ".bz2")
+            
+            if compressed:
+                # If the file is already compressed, we don't need to
+                # re-compress it.
+                fh_compressed = fh_in
+            else:
+                # Use gzip compression for storage. This only impacts storage on
+                # AWS and transfer between S3 and the CDN. It has no impact on the
+                # compression received by the end user (since the CDN re-compresses
+                # files).
+                fh_compressed = io.BytesIO()
+                with gzip.GzipFile(fileobj=fh_compressed, mode="wb") as gzip_file:
+                    shutil.copyfileobj(fh_in, gzip_file)
 
-            fh_compressed.seek(0)
+                fh_compressed.seek(0)
 
             content_type = None
             if file_path.suffix in (".zip", ".whl", ".tar", ".a"):
@@ -136,7 +143,7 @@ def deploy_to_s3_main(
 
             extra_args = {
                 "CacheControl": cache_control,
-                "ContentEncoding": "gzip",
+                "ContentEncoding": "gzip" if compressed else None,
                 "ContentType": content_type,
             }
 
