@@ -359,10 +359,10 @@ def test_xbuildenv_create(selenium, tmp_path):
     )
     assert result.exit_code == 0, result.stdout
     assert "xbuildenv created at" in result.stdout
-    assert (envpath / "xbuildenv").exists()
-    assert (envpath / "xbuildenv" / "pyodide-root").is_dir()
-    assert (envpath / "xbuildenv" / "site-packages-extras").is_dir()
-    assert (envpath / "xbuildenv" / "requirements.txt").exists()
+    assert envpath.exists()
+    assert (envpath / "pyodide-root").is_dir()
+    assert (envpath / "site-packages-extras").is_dir()
+    assert (envpath / "requirements.txt").exists()
 
     if not package_is_built("scipy"):
         # creating xbuildenv without building scipy will raise error
@@ -399,9 +399,9 @@ def test_xbuildenv_install(tmp_path, temp_xbuildenv):
     assert result.exit_code == 0, result.stdout
     assert "Downloading xbuild environment" in result.stdout, result.stdout
     assert "Installing xbuild environment" in result.stdout, result.stdout
-    assert (envpath / "xbuildenv" / "pyodide-root").is_dir()
-    assert (envpath / "xbuildenv" / "site-packages-extras").is_dir()
-    assert (envpath / "xbuildenv" / "requirements.txt").exists()
+    assert (envpath / "pyodide-root").is_dir()
+    assert (envpath / "site-packages-extras").is_dir()
+    assert (envpath / "requirements.txt").exists()
 
 
 @pytest.mark.parametrize("target", ["dir", "file"])

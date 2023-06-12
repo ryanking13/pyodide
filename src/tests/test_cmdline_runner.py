@@ -10,8 +10,9 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 import pyodide
+from conftest import ROOT_PATH
+from pyodide_build import install_xbuildenv
 from pyodide_build.common import emscripten_version, get_pyodide_root
-from pyodide_build.install_xbuildenv import _download_xbuildenv, install_xbuildenv
 
 only_node = pytest.mark.xfail_browsers(
     chrome="node only", firefox="node only", safari="node only"
@@ -436,17 +437,28 @@ def test_pip_install_from_pyodide(selenium, venv):
     )
 
 
-def test_pypa_index(tmp_path):
+def test_pypa_index(selenium, tmp_path):
     """Test that installing packages from the python package index works as
     expected."""
+
     path = Path(tmp_path)
-    version = "0.21.0"  # just need some version that already exists
-    _download_xbuildenv(version, path)
+    subprocess.run(
+        [
+            "pyodide",
+            "xbuildenv",
+            "create",
+            str(path),
+            "--root",
+            ROOT_PATH,
+            "--skip-missing-files",
+        ],
+        check=True,
+    )
 
     # We don't need host dependencies for this test so zero them out
     (path / "requirements.txt").write_text("")
 
-    install_xbuildenv(version, path)
+    install_xbuildenv.install(path, download=False)
     pip_opts = [
         "--index-url",
         "file:" + str((path / "pyodide-root/pypa_index").resolve()),
