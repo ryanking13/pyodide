@@ -5,8 +5,8 @@ from pathlib import Path
 from .common import (
     exit_with_stdio,
     get_build_flag,
-    get_pyodide_root,
     get_unisolated_packages,
+    search_pyodide_root,
 )
 from .logger import logger
 from .recipe import load_all_recipes
@@ -93,28 +93,31 @@ def _copy_wasm_libs(
 
 
 def create(
-    path: str | Path,
+    xbuildenv_path: str | Path,
     pyodide_root: Path | None = None,
     *,
     skip_missing_files: bool = False,
 ) -> None:
     if pyodide_root is None:
-        pyodide_root = get_pyodide_root()
+        pyodide_root = search_pyodide_root(Path.cwd())
 
-    xbuildenv_path = Path(path) / "xbuildenv"
-    xbuildenv_root = xbuildenv_path / "pyodide-root"
+    xbuildenv_path = Path(xbuildenv_path)
+    xbuildenv_pyodide_root = xbuildenv_path / "pyodide-root"
 
-    shutil.rmtree(xbuildenv_path, ignore_errors=True)
+    if xbuildenv_path.exists():
+        logger.info(f"Removing existing xbuildenv at {xbuildenv_path}")
+        shutil.rmtree(xbuildenv_path, ignore_errors=True)
+
     xbuildenv_path.mkdir(parents=True, exist_ok=True)
-    xbuildenv_root.mkdir()
+    xbuildenv_pyodide_root.mkdir()
 
     _copy_xbuild_files(pyodide_root, xbuildenv_path, skip_missing_files)
-    _copy_wasm_libs(pyodide_root, xbuildenv_root, skip_missing_files)
+    _copy_wasm_libs(pyodide_root, xbuildenv_pyodide_root, skip_missing_files)
 
-    (xbuildenv_root / "package.json").write_text("{}")
+    (xbuildenv_pyodide_root / "package.json").write_text("{}")
     res = subprocess.run(
         ["npm", "i", "node-fetch@2"],
-        cwd=xbuildenv_root,
+        cwd=xbuildenv_pyodide_root,
         capture_output=True,
         encoding="utf8",
     )
@@ -132,4 +135,6 @@ def create(
         exit_with_stdio(res)
 
     (xbuildenv_path / "requirements.txt").write_text(res.stdout)
-    (xbuildenv_root / "unisolated.txt").write_text("\n".join(get_unisolated_packages()))
+    (xbuildenv_pyodide_root / "unisolated.txt").write_text(
+        "\n".join(get_unisolated_packages())
+    )

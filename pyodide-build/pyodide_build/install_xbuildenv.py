@@ -34,10 +34,9 @@ def _download_xbuildenv(
 def install_xbuildenv(version: str, xbuildenv_path: Path) -> None:
     logger.info("Installing xbuild environment")
 
-    xbuildenv_path = xbuildenv_path / "xbuildenv"
-    xbuildenv_root = xbuildenv_path / "pyodide-root"
+    xbuildenv_pyodide_root = xbuildenv_path / "pyodide-root"
 
-    os.environ["PYODIDE_ROOT"] = str(xbuildenv_root)
+    os.environ["PYODIDE_ROOT"] = str(xbuildenv_pyodide_root)
 
     host_site_packages = Path(get_build_flag("HOSTSITEPACKAGES"))
     host_site_packages.mkdir(exist_ok=True, parents=True)
@@ -62,7 +61,7 @@ def install_xbuildenv(version: str, xbuildenv_path: Path) -> None:
         xbuildenv_path / "site-packages-extras", host_site_packages, dirs_exist_ok=True
     )
     cdn_base = f"https://cdn.jsdelivr.net/pyodide/v{version}/full/"
-    if (repodata_json := xbuildenv_root / "dist" / "repodata.json").exists():
+    if (repodata_json := xbuildenv_pyodide_root / "dist" / "repodata.json").exists():
         repodata_bytes = repodata_json.read_bytes()
     else:
         repodata_url = cdn_base + "repodata.json"
@@ -70,7 +69,7 @@ def install_xbuildenv(version: str, xbuildenv_path: Path) -> None:
             repodata_bytes = response.read()
     repodata = json.loads(repodata_bytes)
     version = repodata["info"]["version"]
-    create_pypa_index(repodata["packages"], xbuildenv_root, cdn_base)
+    create_pypa_index(repodata["packages"], xbuildenv_pyodide_root, cdn_base)
 
 
 def install(path: Path, *, download: bool = True, url: str | None = None) -> None:

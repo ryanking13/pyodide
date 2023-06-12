@@ -150,15 +150,14 @@ class TestOutOfTree(TestInTree):
 
         assert "PYODIDE_ROOT" in os.environ
         assert os.environ["PYODIDE_ROOT"] == str(
-            xbuildenv / ".pyodide-xbuildenv/xbuildenv/pyodide-root"
+            xbuildenv / ".pyodide-xbuildenv/pyodide-root"
         )
 
     def test_get_pyodide_root(self, xbuildenv, reset_env_vars, reset_cache):
         assert "PYODIDE_ROOT" not in os.environ
 
         assert (
-            common.get_pyodide_root()
-            == xbuildenv / ".pyodide-xbuildenv/xbuildenv/pyodide-root"
+            common.get_pyodide_root() == xbuildenv / ".pyodide-xbuildenv/pyodide-root"
         )
 
     def test_in_xbuildenv(self, reset_env_vars, reset_cache):
