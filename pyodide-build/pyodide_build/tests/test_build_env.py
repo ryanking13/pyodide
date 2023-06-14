@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from conftest import ROOT_PATH
-from pyodide_build import common
+from pyodide_build import build_env, common
 
 
 @pytest.fixture(scope="function")
@@ -163,3 +163,25 @@ class TestOutOfTree(TestInTree):
 
     def test_in_xbuildenv(self, reset_env_vars, reset_cache):
         assert common.in_xbuildenv()
+
+
+def test_get_package_build_config(reset_env_vars, reset_cache):
+    env = common.get_build_environment_vars()
+    config = build_env.get_package_build_config(env)
+
+    for k, v in config.items():
+        assert "$(" not in v, f"Variable substitution not performed: {k}={v}"
+
+    # Should not have any common keys
+    assert len(set(env.keys()) & set(config.keys())) == 0
+
+
+def test_dump_config(reset_env_vars, reset_cache):
+    config_dump = build_env.dump_config({"FOO": "BAR", "BAZ": "QUX"})
+
+    expected_toml = """\
+[tool.pyodide]
+FOO = "BAR"
+BAZ = "QUX"
+"""
+    assert config_dump == expected_toml

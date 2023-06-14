@@ -75,4 +75,8 @@ def dump_config(config: dict[str, str]) -> str:
     """
     import tomli_w
 
+    # Dumps config under [tool.pyodide] section, so that it can be written to pyproject.toml
+    # This is not used yet, but for future compatibility
+    _config = {"tool": {"pyodide": config}}
+
     return tomli_w.dumps(config)
