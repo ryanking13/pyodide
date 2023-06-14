@@ -39,6 +39,7 @@ module = [
   "test",
   "tomli",
   "tomllib",
+  "tomli_w",
   "typer",
   "virtualenv",
   "auditwheel_emscripten.*"

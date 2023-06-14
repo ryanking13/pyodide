@@ -34,10 +34,6 @@ export SYSCONFIGDATA_DIR=$(CPYTHONINSTALL)/sysconfigdata/
 export CPYTHONBUILD=$(CPYTHONROOT)/build/Python-$(PYVERSION)/
 
 export TARGETINSTALLDIR=$(PYODIDE_ROOT)/cpython/installs/python-$(PYVERSION)
-export HOSTINSTALLDIR=$(PYODIDE_ROOT)/packages/.artifacts
-export HOSTSITEPACKAGES=$(PYODIDE_ROOT)/packages/.artifacts/lib/python$(PYMAJOR).$(PYMINOR)/site-packages
-export WASM_LIBRARY_DIR=$(PYODIDE_ROOT)/packages/.libs
-export PKG_CONFIG_PATH=$(PYODIDE_ROOT)/packages/.libs/lib/pkgconfig
 
 export PYTHONINCLUDE=$(PYODIDE_ROOT)/cpython/installs/python-$(PYVERSION)/include/python$(PYMAJOR).$(PYMINOR)
 
@@ -48,17 +44,6 @@ export PYODIDE_BASE_URL?=./
 # CDN it's more efficient to keep this value to 0, and let the CDN perform the
 # Brotli compression.
 export PYODIDE_ZIP_COMPRESSION_LEVEL?=6
-
-# For packages that depend on numpy.
-# TODO: maybe move this somewhere else?
-export NUMPY_LIB=$(HOSTSITEPACKAGES)/numpy/
-
-
-# This environment variable is used for packages to detect if they are built
-# for pyodide during build time
-export PYODIDE=1
-# This is the legacy environment variable used for the aforementioned purpose
-export PYODIDE_PACKAGE_ABI=1
 
 export DBGFLAGS_NODEBUG=-g0
 export DBGFLAGS_WASMDEBUG=-g2
@@ -108,7 +93,6 @@ export LDFLAGS_BASE=\
 export CXXFLAGS_BASE=\
 	-std=c++14
 
-export SIDE_MODULE_LDFLAGS=	$(LDFLAGS_BASE) -s SIDE_MODULE=1
 export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-s MAIN_MODULE=1 \
 	-s MODULARIZE=1 \
@@ -148,10 +132,6 @@ export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-lhtml5_webgl.js \
 	-sGL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0
 
-
-export SIDE_MODULE_CXXFLAGS = $(CXXFLAGS_BASE)
-
-export SIDE_MODULE_CFLAGS= $(CFLAGS_BASE) -I$(PYTHONINCLUDE)
 export MAIN_MODULE_CFLAGS= $(CFLAGS_BASE) \
 	-Wall \
 	-Wno-warn-absolute-paths \
@@ -162,21 +142,6 @@ export MAIN_MODULE_CFLAGS= $(CFLAGS_BASE) \
 	-Werror=unused-result \
 	-I$(PYTHONINCLUDE) \
 	-s EXCEPTION_CATCHING_ALLOWED=['we only want to allow exception handling in side modules']
-
-export STDLIB_MODULE_CFLAGS= $(SIDE_MODULE_CFLAGS) -I Include/ -I . -I Include/internal/
-
-# For RUST
-export CARGO_BUILD_TARGET=wasm32-unknown-emscripten
-export CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER=emcc
-export RUST_TOOLCHAIN=nightly-2023-04-29
-export PYO3_CROSS_LIB_DIR=${CPYTHONINSTALL}/lib
-export PYO3_CROSS_INCLUDE_DIR=${PYTHONINCLUDE}
-
-# idealy we could automatically include all SIDE_MODULE_LDFLAGS here
-export RUSTFLAGS= \
-	-C link-arg=-sSIDE_MODULE=2 \
-	-C link-arg=-sWASM_BIGINT \
-	-Z link-native-libraries=no
 
 .output_vars:
 	set

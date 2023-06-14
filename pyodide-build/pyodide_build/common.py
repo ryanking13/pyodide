@@ -24,6 +24,7 @@ else:
 from packaging.tags import Tag, compatible_tags, cpython_tags
 from packaging.utils import parse_wheel_filename
 
+from .build_env import get_package_build_config
 from .logger import logger
 from .recipe import load_all_recipes
 
@@ -231,27 +232,16 @@ def get_build_environment_vars() -> dict[str, str]:
     """
     Get common environment variables for the in-tree and out-of-tree build.
     """
-    env = _get_make_environment_vars().copy()
+    makefile_env = _get_make_environment_vars()
+    package_build_config = get_package_build_config(env=makefile_env)
+
+    env = makefile_env | package_build_config
 
     # Allow users to overwrite the build environment variables by setting
     # host environment variables.
     # TODO: Add modifiable configuration file instead.
     # (https://github.com/pyodide/pyodide/pull/3737/files#r1161247201)
     env.update({key: os.environ[key] for key in BUILD_VARS if key in os.environ})
-    env["PYODIDE"] = "1"
-
-    tools_dir = Path(__file__).parent / "tools"
-
-    env["CMAKE_TOOLCHAIN_FILE"] = str(
-        tools_dir / "cmake/Modules/Platform/Emscripten.cmake"
-    )
-    env["PYO3_CONFIG_FILE"] = str(tools_dir / "pyo3_config.ini")
-
-    hostsitepackages = env["HOSTSITEPACKAGES"]
-    pythonpath = [
-        hostsitepackages,
-    ]
-    env["PYTHONPATH"] = ":".join(pythonpath)
 
     return env
 
