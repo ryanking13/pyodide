@@ -15,6 +15,7 @@ requirements:
     - numpy
   host:
     - geos
+    - numpy
 test:
   imports:
     - shapely
