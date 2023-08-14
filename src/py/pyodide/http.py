@@ -23,6 +23,8 @@ __all__ = [
     "FetchResponse",
 ]
 
+FAILED_TO_FETCH_MSG: str = "Failed to fetch"
+
 
 def open_url(url: str) -> StringIO:
     """Fetches a given URL synchronously.
@@ -293,4 +295,15 @@ async def pyfetch(url: str, **kwargs: Any) -> FetchResponse:
             url, await _jsfetch(url, to_js(kwargs, dict_converter=Object.fromEntries))
         )
     except JsException as e:
-        raise OSError(e.message) from None
+        msg = e.message
+
+        if msg == "Failed to fetch":
+            msg = (
+                "Failed to fetch. Some common causes of this error are "
+                "a missing Access-Control-Allow-Origin header from the "
+                "server, or a CSP restriction that prevents fetching "
+                "from the server. See the browser console to see if "
+                "there are any errors logged there."
+            )
+
+        raise OSError(msg) from None

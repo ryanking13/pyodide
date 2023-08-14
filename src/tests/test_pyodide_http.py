@@ -185,8 +185,8 @@ def test_pyfetch_coors_error(selenium, httpserver):
         f"""
         import pyodide.http
         from unittest import TestCase
-        raises = TestCase().assertRaises
-        with raises(OSError):
+        raises = TestCase().assertRaisesRegex
+        with raises(OSError, "a missing Access-Control-Allow-Origin header"):
             data = await pyodide.http.pyfetch('{request_url}')
         """
     )
