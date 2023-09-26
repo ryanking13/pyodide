@@ -165,14 +165,8 @@ export async function loadDynlibsFromPackage(
     pkg.file_name.split("-")[0]
   }.libs`;
 
-  // Sort libraries so that global libraries can be loaded first.
-  // TODO(ryanking13): It is not clear why global libraries should be loaded first.
-  //    But without this, we get a fatal error when loading the libraries.
-  // type T = { global: boolean };
-  // dynlibs.sort((lib1: T, lib2: T) => Number(lib2.global) - Number(lib1.global));
-
   for (const path of dynlibs) {
-    await loadDynlib(path, false, [auditWheelLibDir], Module.FS.readFile);
+    await loadDynlib(path, !!pkg.shared_library, [auditWheelLibDir], Module.FS.readFile);
   }
 }
 
