@@ -108,13 +108,17 @@ export async function loadDynlib(
   const fs = createDynlibFS(lib, searchDirs, readFileFunc);
 
   try {
-    await Module.loadDynamicLibrary(lib, {
-      loadAsync: true,
-      nodelete: true,
-      allowUndefined: true,
-      global,
-      fs,
-    });
+    await Module.loadDynamicLibrary(
+      lib,
+      {
+        loadAsync: true,
+        nodelete: true,
+        allowUndefined: true,
+        global,
+        fs,
+      },
+      {},  // localScope
+    );
 
     // Emscripten saves the list of loaded libraries in LDSO.loadedLibsByName.
     // However, since emscripten dylink metadata only contains the name of the
