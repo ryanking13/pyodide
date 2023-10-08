@@ -53,10 +53,8 @@ if IS_COMPILER_INVOCATION:
 
 import dataclasses
 import re
-import shutil
 import subprocess
 from collections.abc import Iterable, Iterator
-from typing import Literal, NoReturn
 
 
 @dataclasses.dataclass(eq=False, order=False, kw_only=True)
@@ -73,7 +71,9 @@ class BuildArgs:
     host_install_dir: str = ""  # Directory for installing built host packages.
     builddir: str = ""  # The path to run pypa/build
     pythoninclude: str = ""
-    exports: Literal["whole_archive", "requested", "pyinit"] | list[str] = "pyinit"
+    # Avoid using typing Literal here to optimize the import time
+    # exports: Literal["whole_archive", "requested", "pyinit"] | list[str] = "pyinit"
+    exports: list[str] | str = "pyinit"
     compression_level: int = 6
 
 
@@ -413,6 +413,8 @@ def _calculate_object_exports_readobj_parse(output: str) -> list[str]:
 
 
 def calculate_object_exports_readobj(objects: list[str]) -> list[str] | None:
+    import shutil
+    
     readobj_path = shutil.which("llvm-readobj")
     if not readobj_path:
         which_emcc = shutil.which("emcc")
@@ -464,7 +466,7 @@ def filter_objects(line: list[str]) -> list[str]:
     ]
 
 
-def calculate_exports(line: list[str], export_all: bool) -> Iterable[str]:
+def calculate_exports(line: list[str], export_all: bool) -> "Iterable[str]":
     """
     List out symbols from object files and archive files that are marked as public.
     If ``export_all`` is ``True``, then return all public symbols.
@@ -488,8 +490,8 @@ def calculate_exports(line: list[str], export_all: bool) -> Iterable[str]:
 
 def get_export_flags(
     line: list[str],
-    exports: Literal["whole_archive", "requested", "pyinit"] | list[str],
-) -> Iterator[str]:
+    exports: list[str] | str,
+) -> "Iterator[str]":
     """
     If "whole_archive" was requested, no action is needed. Otherwise, add
     `-sSIDE_MODULE=2` and the appropriate export list.
@@ -633,7 +635,7 @@ def handle_command_generate_args(  # noqa: C901
 def handle_command(
     line: list[str],
     build_args: BuildArgs,
-) -> NoReturn:
+):
     """Handle a compilation command. Exit with an appropriate exit code when done.
 
     Parameters
