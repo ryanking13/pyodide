@@ -4,6 +4,7 @@ c = '{CC}'
 cpp = '{CXX}'
 ar = '{AR}'
 fortran = '{GFORTRAN}'
+pkgconfig = 'pkg-config'
 
 cmake = '{CMAKE}'
 sdl2-config = ['emconfigure', 'sdl2-config']

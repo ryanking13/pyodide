@@ -162,8 +162,8 @@ def replay_f2c(args: list[str], dryrun: bool = False) -> list[str] | None:
         found_source = True
 
     if not found_source:
-        print(f"f2c: source not found, skipping: {new_args_str}")
         return None
+    
     return new_args
 
 
@@ -325,8 +325,16 @@ def replay_genargs_handle_argument(arg: str) -> str | None:
         '-fno-strict-overflow',  # warning: argument unused during compilation
         "-mno-sse2", # warning: argument unused during compilation
         "-mno-avx2", # warning: argument unused during compilation
+        "-std=legacy", # fortran flag that clang does not support
     ]:
         return None
+
+    if arg.startswith((
+        "-J",  # fortran flag that clang does not support
+    )):
+        print("-J argument:", arg)
+        return None
+    
     # fmt: on
     return arg
 
@@ -661,12 +669,9 @@ def handle_command(
     is_link_cmd = get_library_output(line) is not None
 
     if line[0] == "gfortran":
-        if "-dumpversion" in line:
-            sys.exit(subprocess.run(line).returncode)
         tmp = replay_f2c(line)
-        if tmp is None:
-            sys.exit(0)
-        line = tmp
+        if tmp is not None:
+            line = tmp
 
     new_args = handle_command_generate_args(line, build_args, is_link_cmd)
 
@@ -675,6 +680,8 @@ def handle_command(
 
         scipy_fixes(new_args)
 
+    print("Original:", line, file=sys.stderr)
+    print("New:", new_args, file=sys.stderr)
     returncode = subprocess.run(new_args).returncode
 
     sys.exit(returncode)

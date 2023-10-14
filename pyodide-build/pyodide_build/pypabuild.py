@@ -36,6 +36,9 @@ AVOIDED_REQUIREMENTS = [
     # the pywasmcross cmake wrapper.
     # TODO: Find a way to make scikit-build use the pywasmcross cmake wrapper.
     "cmake",
+    # scikit-build tries to install patchelf when it is not
+    # available on the system. But we don't need it.
+    "patchelf",
 ]
 
 
