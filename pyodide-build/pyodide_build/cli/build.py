@@ -18,6 +18,7 @@ from ..out_of_tree.pypi import (
     build_wheels_from_pypi_requirements,
     fetch_pypi_package,
 )
+from ..out_of_tree.builder import find_builder
 
 
 def convert_exports(exports: str) -> _BuildSpecExports:
@@ -135,7 +136,7 @@ def main(
         "will build the current directory.",
     ),
     output_directory: str = typer.Option(
-        "",
+        "./dist",
         "--outdir",
         "-o",
         help="which directory should the output be placed into?",
@@ -180,17 +181,16 @@ def main(
         print(e.args[0], file=sys.stderr)
         sys.exit(1)
 
-    output_directory = output_directory or "./dist"
-
     outpath = Path(output_directory).resolve()
-    outpath.mkdir(exist_ok=True)
+    outpath.mkdir(exist_ok=True, parents=True)
     extras: list[str] = []
+    source_location = source_location or Path.cwd()
 
     if skip_built_in_packages:
         package_lock_json = get_pyodide_root() / "dist" / "pyodide-lock.json"
         skip_dependency.append(str(package_lock_json.absolute()))
 
-    if len(requirements_txt) > 0:
+    if requirements_txt:
         # a requirements.txt - build it (and optionally deps)
         if not Path(requirements_txt).exists():
             raise RuntimeError(
@@ -237,19 +237,15 @@ def main(
         extras = re.findall(r"\[(\w+)\]", source_location)
         if len(extras) != 0:
             source_location = source_location[0 : source_location.find("[")]
-    if not source_location:
-        # build the current folder
-        wheel = source(Path.cwd(), outpath, exports, ctx)
-    elif source_location.find("://") != -1:
-        wheel = url(source_location, outpath, exports, ctx)
-    elif Path(source_location).is_dir():
-        # a folder, build it
-        wheel = source(Path(source_location).resolve(), outpath, exports, ctx)
-    elif source_location.find("/") == -1:
-        # try fetch or build from pypi
-        wheel = pypi(source_location, outpath, exports, ctx)
-    else:
-        raise RuntimeError(f"Couldn't determine source type for {source_location}")
+
+    builder = find_builder(source_location)
+
+    builder.prepare()
+    try:
+        wheel = builder.build()
+    finally:
+        builder.cleanup()
+
     # now build deps for wheel
     if build_dependencies:
         try:
