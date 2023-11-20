@@ -86,3 +86,19 @@ def test_cpp_exceptions(selenium):
 
     with pytest.raises(ValueError):
         lombscargle(x=[1], y=[1, 2], freqs=[1, 2, 3])
+
+
+@pytest.mark.driver_timeout(40)
+@run_in_pyodide(packages=["scipy"])
+def test_ndarray_from_pyobj(selenium):
+    # https://github.com/pyodide/pyodide/issues/4310
+    import numpy as np
+    from numpy import eye, random
+    from scipy.linalg import logm
+
+    random.seed(1234)
+    dtype = np.float64
+    n = 2
+    scale = 1e-4
+    A = (eye(n) + random.rand(n, n) * scale).astype(dtype)
+    logm(A)
