@@ -1,0 +1,30 @@
+From d8a7bf1b00b468cb07cdb2b6ef1504cb4897f8c4 Mon Sep 17 00:00:00 2001
+From: Gyeongjae Choi <def6488@gmail.com>
+Date: Mon, 20 Nov 2023 14:16:36 +0000
+Subject: [PATCH 10/10] Remove version_link_args
+
+Scipy meson build system uses --version-script linker option to hide symbols,
+but it doesn't work well in Pyodide for some reason.
+
+Related issue: https://github.com/pyodide/pyodide/issues/4310
+
+---
+ meson.build | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/meson.build b/meson.build
+index e843a3aba..98dd2cc63 100644
+--- a/meson.build
++++ b/meson.build
+@@ -121,7 +121,7 @@ add_project_arguments(_intel_fflags, language: 'fortran')
+ # Meson using `-fvisibility=hidden` for C and `-fvisibility-inlines-hidden` for
+ # C++ code. See gh-15996 for details.
+ _linker_script = meson.project_source_root() / 'scipy/_build_utils/link-version-pyinit.map'
+-version_link_args = ['-Wl,--version-script=' + _linker_script]
++version_link_args = []
+ # Note that FreeBSD only accepts version scripts when -shared is passed,
+ # hence we need to pass that to `cc.links` explicitly (flag is already
+ # present for `extension_module` invocations).
+-- 
+2.42.0
+
