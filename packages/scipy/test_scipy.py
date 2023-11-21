@@ -90,7 +90,7 @@ def test_cpp_exceptions(selenium):
 
 @pytest.mark.driver_timeout(40)
 @run_in_pyodide(packages=["scipy"])
-def test_ndarray_from_pyobj(selenium):
+def test_ndarray_from_pyobj(selenium_standalone):
     # https://github.com/pyodide/pyodide/issues/4310
     import numpy as np
     from numpy import eye, random
