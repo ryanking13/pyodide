@@ -328,6 +328,7 @@ def replay_genargs_handle_argument(arg: str) -> str | None:
         "-mno-sse2", # warning: argument unused during compilation
         "-mno-avx2", # warning: argument unused during compilation
         "-std=legacy", # fortran flag that clang does not support
+        "-Ofast", # optimization flag that emcc does not support
     ]:
         return None
 
