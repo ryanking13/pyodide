@@ -25,9 +25,7 @@ async def test_pyinstrument(selenium, tmp_path):
     s1 = p1.last_session
     s1.save(session_file)
 
-    json_opts = dict(indent=2, sort_keys=True)
     s1_data = json.load(session_file.open())
-    s1_json = json.dumps(s1_data, **json_opts)  # type: ignore[arg-type]
 
     # _all_ the keys as of 4.4.0, but presumably more could be added
     expected_keys = {
@@ -43,7 +41,10 @@ async def test_pyinstrument(selenium, tmp_path):
 
     assert not missing_keys, f"session JSON missing: {missing_keys}"
 
-    s2 = Session.load(session_file)
-    s2_json = json.dumps(s2.to_json(), **json_opts)  # type: ignore[arg-type]
+    s2 = Session.load(session_file).to_json()
 
-    assert s1_json == s2_json, "loaded JSON did not match"
+    assert s1_data.keys() == s2.keys()
+
+    for k, v in s1_data.items():
+        if s2[k] != v:
+            assert s2[k] == v, f"{k} mismatch: {s2[k]} != {v}"
