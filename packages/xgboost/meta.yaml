@@ -1,13 +1,15 @@
-# XGBoost 2.0 dropped support for 32-bit system, so 1.7.6 is the last version we can updated
+# XGBoost dropped support for 32-bit system, so we can't update more recent versions
 # See: https://github.com/dmlc/xgboost/issues/9035
 package:
   name: xgboost
-  version: 1.7.6
+  version: 1.6.2
   top-level:
     - xgboost
 source:
-  url: https://files.pythonhosted.org/packages/19/fe/327b4a56ef3e3843b97537ff60381cc4d57a8be7ee99375a8710ee690cb2/xgboost-1.7.6.tar.gz
-  sha256: 1c527554a400445e0c38186039ba1a00425dcdb4e40b37eed0e74cb39a159c47
+  url: https://files.pythonhosted.org/packages/25/e0/f00261d3357eafbe7c657de718abd3c0f6613633a38d05350f63ee099cde/xgboost-1.6.2.tar.gz
+  sha256: e1f5c91ba88cf8edb409d7fd2ca150dcd80b6f2115587d87365f0c10b2d4f009
+  patches:
+    - patches/0003-Fix-type-mismatch-for-CSR-conversion-in-c_api.patch
 build:
   cflags: |
     -DDMLC_USE_FOPEN64=0
