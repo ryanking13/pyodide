@@ -1,14 +1,14 @@
-# XGBoost dropped support for 32-bit system, so we can't update more recent versions
-# See: https://github.com/dmlc/xgboost/issues/9035
 package:
   name: xgboost
-  version: 1.6.2
+  version: 1.6.1
   top-level:
     - xgboost
 source:
-  url: https://files.pythonhosted.org/packages/25/e0/f00261d3357eafbe7c657de718abd3c0f6613633a38d05350f63ee099cde/xgboost-1.6.2.tar.gz
-  sha256: e1f5c91ba88cf8edb409d7fd2ca150dcd80b6f2115587d87365f0c10b2d4f009
+  url: https://files.pythonhosted.org/packages/0e/8c/19309bcaf9a88b0bab34b88935925153f3f3f646163acaae9aa148cf72bb/xgboost-1.6.1.tar.gz
+  sha256: 24072028656f3428e7b8aabf77340ece057f273e41f7f85d67ccaefb7454bb18
   patches:
+    - patches/0001-Add-missing-template-type.patch
+    - patches/0002-Add-library-loading-path.patch
     - patches/0003-Fix-type-mismatch-for-CSR-conversion-in-c_api.patch
 build:
   cflags: |
@@ -27,3 +27,4 @@ about:
   PyPI: https://pypi.org/project/xgboost
   summary: XGBoost Python Package
   license: Apache-2.0
+# Note: this package cannot be updated until we add support for building with meson
