@@ -38,7 +38,5 @@ build:
 
     emmake make -j ${PYODIDE_JOBS:-3};
     emmake make -j ${PYODIDE_JOBS:-3} install;
-
-    cp -P ${WASM_LIBRARY_DIR}/lib/libnetcdf* ${DISTDIR}
   sharedlib-files:
     - lib/libnetcdf.so*
