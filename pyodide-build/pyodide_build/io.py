@@ -94,6 +94,7 @@ class _BuildSpec(BaseModel):
     post: str | None = None
     unvendor_tests: bool = Field(True, alias="unvendor-tests")
     vendor_sharedlib: bool = Field(False, alias="vendor-sharedlib")
+    sharedlib_files: list[str] = Field([], alias="sharedlib-files")
     cross_build_env: bool = Field(False, alias="cross-build-env")
     cross_build_files: list[str] = Field([], alias="cross-build-files")
 
@@ -114,6 +115,7 @@ class _BuildSpec(BaseModel):
             "script",
             "exports",
             "unvendor_tests",
+            "sharedlib_files",
         }
 
         typ = values["package_type"]

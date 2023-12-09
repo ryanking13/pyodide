@@ -200,6 +200,27 @@ def get_num_cores() -> int:
     return loky.cpu_count()
 
 
+def copy_files(source: list[Path] | Path, dest: Path) -> None:
+    """
+    Copy a list of files to a destination directory
+
+    This function is similar to shutil.copytree, but works even if the
+    destination directory already exists.
+    """
+
+    if isinstance(source, Path):
+        source = [source]
+
+    for file_or_dir in source:
+        if not file_or_dir.exists():
+            raise FileNotFoundError(f"{file_or_dir} does not exist")
+        
+        if file_or_dir.is_dir():
+            shutil.copytree(file_or_dir, dest / file_or_dir.name, dirs_exist_ok=True)
+        else:
+            shutil.copy(file_or_dir, dest)
+
+
 def make_zip_archive(
     archive_path: Path,
     input_dir: Path,

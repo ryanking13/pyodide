@@ -12,6 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import textwrap
 import urllib
 from collections.abc import Iterator
@@ -42,6 +43,7 @@ from .common import (
     find_missing_executables,
     make_zip_archive,
     modify_wheel,
+    copy_files,
 )
 from .io import MetaConfig, _BuildSpec, _SourceSpec
 from .logger import logger
@@ -678,6 +680,7 @@ def _build_package_inner(
     finished_wheel = url and url.endswith(".whl")
     post = build_metadata.post
     package_type = build_metadata.package_type
+    sharedlib_files = build_metadata.sharedlib_files
 
     # These are validated in io.check_package_config
     # If any of these assertions fail, the code path through here might get a
@@ -735,17 +738,24 @@ def _build_package_inner(
 
         if package_type in ("static_library", "shared_library"):
             # Copy libraries and headers so it can be accessed by other packages
-            shutil.copytree(src_dist_dir, get_library_install_dir())
+            copy_files(list(src_dist_dir.glob("*")), get_library_install_dir())
 
         if package_type == "static_library":
             pass
-        
+
         elif package_type in ("shared_library", "cpython_module"):
             # If shared library, we copy .so files to dist_dir
             # and create a zip archive of the .so files
             shutil.rmtree(dist_dir, ignore_errors=True)
             dist_dir.mkdir(parents=True)
-            make_zip_archive(dist_dir / f"{src_dir_name}.zip", src_dist_dir)
+
+            with tempfile.TemporaryDirectory() as _temp_dir:
+                temp_dir = Path(_temp_dir)
+                for file in sharedlib_files:
+                    full_paths = list(src_dist_dir.glob(file))
+                    copy_files(full_paths, temp_dir)
+
+                make_zip_archive(dist_dir / f"{src_dir_name}.zip", temp_dir)
         else:  # wheel
             if not finished_wheel:
                 compile(
