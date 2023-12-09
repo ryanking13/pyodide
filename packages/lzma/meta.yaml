@@ -19,7 +19,9 @@ build:
       $(pkg-config --libs --dont-define-prefix liblzma)
 
     cp Lib/lzma.py $DISTDIR
-
+  sharedlib-files:
+    - _lzma.so
+    - lzma.py
 requirements:
   host:
     - liblzma

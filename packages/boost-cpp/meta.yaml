@@ -12,7 +12,7 @@ source:
 build:
   type: static_library
   script: |
-    export INSTALL_DIR=${WASM_LIBRARY_DIR}
+    export INSTALL_DIR=${DISTDIR}
     ./bootstrap.sh --prefix=${INSTALL_DIR}
 
     ./b2 variant=release toolset=emscripten link=static threading=single \

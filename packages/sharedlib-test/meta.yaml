@@ -14,6 +14,11 @@ build:
     emcc -c dep.c -o dep.o ${SIDE_MODULE_CFLAGS}
     emcc -c dep2.c -o dep2.o ${SIDE_MODULE_CFLAGS}
 
-    emcc dep2.o ${SIDE_MODULE_LDFLAGS} -o ${DISTDIR}/sharedlib-test-dep2.so
-    emcc dep.o ${SIDE_MODULE_LDFLAGS} ${DISTDIR}/sharedlib-test-dep2.so -o ${DISTDIR}/sharedlib-test-dep.so
-    emcc main.o ${SIDE_MODULE_LDFLAGS} ${DISTDIR}/sharedlib-test-dep.so -o ${DISTDIR}/sharedlib-test.so
+    mkdir -p ${DISTDIR}/lib
+    emcc dep2.o ${SIDE_MODULE_LDFLAGS} -o ${DISTDIR}/lib/sharedlib-test-dep2.so
+    emcc dep.o ${SIDE_MODULE_LDFLAGS} ${DISTDIR}/lib/sharedlib-test-dep2.so -o ${DISTDIR}/lib/sharedlib-test-dep.so
+    emcc main.o ${SIDE_MODULE_LDFLAGS} ${DISTDIR}/lib/sharedlib-test-dep.so -o ${DISTDIR}/lib/sharedlib-test.so
+  sharedlib-files:
+    - lib/sharedlib-test.so
+    - lib/sharedlib-test-dep.so
+    - lib/sharedlib-test-dep2.so

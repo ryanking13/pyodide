@@ -36,3 +36,6 @@ build:
        -sUSE_SQLITE3 -lsqlite3
 
     cd Lib && tar --exclude=test -cf - sqlite3 | tar -C $DISTDIR -xf -
+  sharedlib-files:
+    - sqlite3
+    - _sqlite3.so

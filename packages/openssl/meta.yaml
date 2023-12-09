@@ -17,14 +17,17 @@ build:
       -DOPENSSL_NO_SECURE_MEMORY \
       -DNO_SYSLOG \
       ${SIDE_MODULE_CFLAGS} \
-      --prefix=${WASM_LIBRARY_DIR}
+      --prefix=${DISTDIR}
 
+    mkdir -p ${DISTDIR}/lib
     sed -i 's!^CROSS_COMPILE=.*!!g' Makefile
     make build_generated
     make -j ${PYODIDE_JOBS:-3} libcrypto.a
     make -j ${PYODIDE_JOBS:-3} libssl.a
     emar -d libcrypto.a liblegacy-lib-bn_asm.o liblegacy-lib-des_enc.o liblegacy-lib-fcrypt_b.o
-    emcc ${SIDE_MODULE_LDFLAGS} libcrypto.a -o libcrypto.so
-    emcc ${SIDE_MODULE_LDFLAGS} libssl.a -o libssl.so
+    emcc ${SIDE_MODULE_LDFLAGS} libcrypto.a -o ${DISTDIR}/lib/libcrypto.so
+    emcc ${SIDE_MODULE_LDFLAGS} libssl.a -o ${DISTDIR}/lib/libssl.so
     make install_sw
-    cp libcrypto.so libssl.so ${DISTDIR}
+  sharedlib-files:
+    - lib/libcrypto.so
+    - lib/libssl.so

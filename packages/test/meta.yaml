@@ -43,3 +43,12 @@ build:
       tar --exclude=__pycache__ -cf - \
       test distutils/tests sqlite3/test \
       | tar -C $DISTDIR -xf -
+  sharedlib-files:
+    - distutils
+    - test
+    - _ctypes_test.so
+    - _testbuffer.so
+    - _testcapi.so
+    - _testimportmultiple.so
+    - _testinternalcapi.so
+    - _testmultiphase.so

@@ -14,3 +14,6 @@ build:
     em++ -c catch.cpp -o catch.o ${SIDE_MODULE_CFLAGS} -fexceptions -I${PYTHONINCLUDE}
     em++ throw.o ${SIDE_MODULE_LDFLAGS} -o ${DISTDIR}/cpp-exceptions-test-throw.so -fexceptions
     em++ catch.o ${SIDE_MODULE_LDFLAGS} -o ${DISTDIR}/cpp-exceptions-test-catch.so -fexceptions
+  sharedlib-files:
+    - cpp-exceptions-test-throw.so
+    - cpp-exceptions-test-catch.so

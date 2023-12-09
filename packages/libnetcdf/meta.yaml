@@ -23,7 +23,7 @@ build:
     # dap + byterange: no libcurl
 
     emconfigure ./configure \
-      --prefix=${WASM_LIBRARY_DIR} \
+      --prefix=${DISTDIR} \
       --disable-doxygen \
       --enable-netcdf-4 \
       --disable-dap \
@@ -40,3 +40,5 @@ build:
     emmake make -j ${PYODIDE_JOBS:-3} install;
 
     cp -P ${WASM_LIBRARY_DIR}/lib/libnetcdf* ${DISTDIR}
+  sharedlib-files:
+    - lib/libnetcdf.so*

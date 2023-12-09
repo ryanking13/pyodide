@@ -17,7 +17,7 @@ build:
   cxxflags: -fexceptions -fPIC -DBOOST_SP_DISABLE_THREADS=1 -O2
   ldflags: -fexceptions
   script: |
-    export INSTALL_DIR=${WASM_LIBRARY_DIR}
+    export INSTALL_DIR=${DISTDIR}
 
     echo "set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)" > ForceStaticLib.cmake
     emcmake cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_PYTHON=ON \

@@ -12,3 +12,5 @@ build:
   type: cpython_module
   script: |
     cp Lib/_pydecimal.py $DISTDIR
+  sharedlib-files:
+    - _pydecimal.py

@@ -34,13 +34,11 @@ build:
         USE_THREAD=0 LDFLAGS="${SIDE_MODULE_LDFLAGS}"
     mkdir -p dist
     # Add libf2c symbols to libopenblas.so
-    emcc ${WASM_LIBRARY_DIR}/lib/libf2c.a libopenblas.a ${SIDE_MODULE_LDFLAGS} \
-        -o libopenblas.so
+    emcc ${DISTDIR}/lib/libf2c.a libopenblas.a ${SIDE_MODULE_LDFLAGS} \
+        -o ${DISTDIR}/lib/libopenblas.so
 
-    cp libopenblas.so dist
-    mkdir -p ${WASM_LIBRARY_DIR}/lib
-    cp dist/libopenblas.so ${WASM_LIBRARY_DIR}/lib
-
+  sharedlib-files:
+    - lib/libopenblas.so
 requirements:
   host:
     - libf2c
