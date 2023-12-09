@@ -1,11 +1,11 @@
 package:
   name: libheif
-  version: 1.17.5
+  version: 1.12.0
   tag:
     - library
 source:
-  url: https://github.com/strukturag/libheif/releases/download/v1.17.5/libheif-1.17.5.tar.gz
-  sha256: 38ab01938ef419dbebb98346dc0b1c8bb503a0449ea61a0e409a988786c2af5b
+  url: https://github.com/strukturag/libheif/releases/download/v1.12.0/libheif-1.12.0.tar.gz
+  sha256: e1ac2abb354fdc8ccdca71363ebad7503ad731c84022cf460837f0839e171718
 
 requirements:
   host:
@@ -20,12 +20,8 @@ build:
     emcmake cmake \
       -DCMAKE_CXX_FLAGS="-fPIC" \
       -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \
-      -DENABLE_MULTITHREADING_SUPPORT=OFF \
-      -DWITH_GDK_PIXBUF=OFF \
       -DWITH_EXAMPLES=OFF \
-      -DENABLE_PLUGIN_LOADING=OFF \
       -DBUILD_SHARED_LIBS=ON \
-      -DBUILD_TESTING=OFF \
       -DLIBDE265_INCLUDE_DIR=${WASM_LIBRARY_DIR}/include \
       -DLIBDE265_LIBRARY=${WASM_LIBRARY_DIR}/lib/libde265.a \
       ./
