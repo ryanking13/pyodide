@@ -12,7 +12,7 @@ diff --git a/lib/matplotlib/font_manager.py b/lib/matplotlib/font_manager.py
 index a5742ef88f..7eb183ab00 100644
 --- a/lib/matplotlib/font_manager.py
 +++ b/lib/matplotlib/font_manager.py
-@@ -1093,10 +1093,8 @@ class FontManager:
+@@ -1035,10 +1035,8 @@ class FontManager:
          self.afmlist = []
          self.ttflist = []
  
@@ -25,7 +25,7 @@ index a5742ef88f..7eb183ab00 100644
          try:
              for fontext in ["afm", "ttf"]:
                  for path in [*findSystemFonts(paths, fontext=fontext),
-@@ -1109,7 +1107,7 @@ class FontManager:
+@@ -1050,7 +1050,7 @@ class FontManager:
                          _log.info("Failed to extract font properties from %s: "
                                    "%s", path, exc)
          finally:
