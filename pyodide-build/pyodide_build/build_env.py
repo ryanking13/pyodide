@@ -252,6 +252,10 @@ def get_hostsitepackages() -> str:
     return get_build_flag("HOSTSITEPACKAGES")
 
 
+def get_library_install_dir() -> Path:
+    return Path(get_build_flag("WASM_LIBRARY_DIR"))
+
+
 @functools.cache
 def get_unisolated_packages() -> list[str]:
     PYODIDE_ROOT = get_pyodide_root()

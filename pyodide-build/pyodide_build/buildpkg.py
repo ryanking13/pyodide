@@ -31,6 +31,7 @@ from .build_env import (
     get_pyodide_root,
     pyodide_tags,
     replace_so_abi_tags,
+    get_library_install_dir,
 )
 from .common import (
     _environment_substitute_str,
@@ -520,8 +521,7 @@ def package_wheel(
 
         vendor_sharedlib = build_metadata.vendor_sharedlib
         if vendor_sharedlib:
-            lib_dir = Path(get_build_flag("WASM_LIBRARY_DIR"))
-            copy_sharedlibs(wheel, wheel_dir, lib_dir)
+            copy_sharedlibs(wheel, wheel_dir, get_library_install_dir())
 
         python_dir = f"python{sys.version_info.major}.{sys.version_info.minor}"
         host_site_packages = Path(host_install_dir) / f"lib/{python_dir}/site-packages"
@@ -733,9 +733,13 @@ def _build_package_inner(
             )
         bash_runner.run(build_metadata.script, script_name="build script", cwd=srcpath)
 
+        if package_type in ("static_library", "shared_library"):
+            # Copy libraries and headers so it can be accessed by other packages
+            shutil.copytree(src_dist_dir, get_library_install_dir())
+
         if package_type == "static_library":
-            # Nothing needs to be done for a static library
             pass
+        
         elif package_type in ("shared_library", "cpython_module"):
             # If shared library, we copy .so files to dist_dir
             # and create a zip archive of the .so files
