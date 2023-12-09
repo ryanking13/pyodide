@@ -16,6 +16,113 @@ myst:
 
 ## Unreleased
 
+- {{ Enhancement }} Added a return type `PackageData` to `pyodide.loadPackage`,
+  containing the loaded package's metadata.
+  {pr}`4306`
+
+- {{ Breaking }} Node.js < 18 is no longer officially supported. Older versions
+  of Node.js might still work, but they are not tested or guaranteed to work.
+  {pr}`4269`
+
+- {{ Fix }} Fixed default indexURL calculation in Node.js environment.
+  {pr}`4288`
+
+- {{ Fix }} Fixed a bug that webpack messes up dynamic import of `pyodide.asm.js`.
+  {pr}`4294`
+
+- {{ Enhancement }} Added experimental support for stack switching.
+  {pr}`3957`, {pr}`3964`, {pr}`3987`, {pr}`3990`, {pr}`3210`
+
+- {{ Fix }} `jsarray.pop` now works correctly. It previously returned the wrong
+  value and leaked memory.
+  {pr}`4236`
+
+- {{ Breaking }} `PyProxy.toString` now calls `str` instead of `repr`. For now
+  you can opt into the old behavior by passing `pyproxyToStringRepr: true` to
+  `loadPyodide`, but this may be removed in the future.
+  {pr}`4247`
+
+- {{ Fix }} `import type { PyProxy } from "pyodide/ffi"` now works with the `NodeNext` typescript target.
+  {pr}`4256`
+
+- {{ Fix }} when accessing a `JsProxy` attribute invokes a getter and the getter
+  throws an error, that error is propagated instead of being turned into an
+  `AttributeError`.
+  {pr}`4254`
+
+- {{ Fix }} Fixed a bug that occurs when using `toJs` with both `dictConverter`
+  and `defaultConverter` arguments.
+  {pr}`4263`
+
+- {{ Enhancement }} The `pyodide-py` package on `pypi` now includes `py.typed`
+  markers so mypy will use the types.
+  {pr}`4321`
+
+- {{ Enhancement }} Added `JsArray.remove` and `JsArray.insert` methods.
+  {pr}`4326`
+
+- {{ Fix }} `pyodide.setStdin` now does not consider an empty string as EOF.
+  {pr}`4327`
+
+### Pyodide CLI
+
+- {{ Enhancement }} `pyodide config` command now show additional config variables:
+  `rustflags`, `cmake_toolchain_file`, `pyo3_config_file`, `rust_toolchain`, `cflags`
+  `cxxflags`, `ldflags`, `meson_cross_file`. These variables can be used in out-of-tree
+  build to set the same variables as in-tree build.
+  {pr}`4241`
+
+- {{ Enhancement }} `pyodide build` command now accepts `--config-setting` (`-C`) option
+  to pass flags to the build backend, just like `python -m build` command.
+  {pr}`4308`
+
+### Packages
+
+- New Packages: `river` {pr}`4197`, `sisl` {pr}`4210`, `frozenlist` {pr}`4231`,
+  `zengl` {pr}`4208`, `msgspec` {pr}`4265`, `aiohttp` {pr}`4282`, `pysam` {pr}`4268`
+
+- Upgraded `contourpy` to 1.2.0 {pr}`4291`
+
+### Load time & size optimizations
+
+- {{ Performance }} Do not use `importlib.metadata` when identifying installed packages,
+  which reduces the time to load Pyodide.
+  {pr}`4147`
+
+### Build system
+
+- {{ Fix }} Fixed `Emscripten.cmake` not vendored in pyodide-build since 0.24.0.
+  {pr}`4223`
+
+- {{ Fix }} pyodide-build now does not override `CMAKE_CONFIG_FILE` and `PYO3_CONFIG_FILE`
+  env variables if provided by user.
+  {pr}`4223`
+
+## Version 0.24.1
+
+_September 25, 2023_
+
+- {{ Fix }} Fixed `LONG_BIT definition appears wrong for platform` error happened in out-of-tree build.
+  {pr}`4136`
+
+- {{ Fix }} Fixed an Emscripten bug that broke some matplotlib functionality.
+  {pr}`4163`
+
+- {{ Fix }} `pyodide.checkInterrupt` works when there is no interrupt buffer and
+  the gil is not held.
+  {pr}`4164`
+
+### Packages
+
+- Upgraded scipy to 1.11.2 {pr}`4156`
+- Upgraded sourmash to 4.8.4 {pr}`4154`
+- Upgraded scikit-learn to 1.3.1 {pr}`4161`
+- Upgraded micropip to 0.5.0 {pr}`4167`
+
+## Version 0.24.0
+
+_September 13, 2023_
+
 ### General
 
 - {{ Update }} Pyodide now runs Python 3.11.3.
@@ -106,8 +213,8 @@ myst:
   files for WebAssembly (WASM) compatibility.
   {pr}`4018`
 
-- {{ Enhancement }} In pyodide build, automatically skip building package dependencies that are already included
-  in the pyodide distribution.
+- {{ Enhancement }} In pyodide build, automatically skip building package
+  dependencies that are already included in the pyodide distribution.
   {pr}`4058`
 
 ### Packages
@@ -118,9 +225,9 @@ myst:
   {pr}`3909`, pyshp {pr}`3909`, netCDF4 {pr}`3910`, igraph {pr}`3991`, CoolProp
   {pr}`4028`, contourpy {pr}`4102`, awkward-cpp {pr}`4101`, orjson {pr}`4036`.
 
-- Upgraded scipy to 1.11.1 {pr}`3794`, {pr}`3996`
-
 - Upgraded numpy to 1.25.2 {pr}`4125`
+
+- Upgraded scipy to 1.11.1 {pr}`3794`, {pr}`3996`
 
 - OpenBLAS has been added and scipy now uses OpenBLAS rather than CLAPACK
   {pr}`3331`.

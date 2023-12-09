@@ -1,12 +1,17 @@
 import os
 from pathlib import Path
 
+from build import ConfigSettingsType
+
 from .. import build_env, common, pypabuild
 from ..io import _BuildSpecExports
 
 
 def run(
-    srcdir: Path, outdir: Path, exports: _BuildSpecExports, args: list[str]
+    srcdir: Path,
+    outdir: Path,
+    exports: _BuildSpecExports,
+    config_settings: ConfigSettingsType,
 ) -> Path:
     outdir = outdir.resolve()
     cflags = build_env.get_build_flag("SIDE_MODULE_CFLAGS")
@@ -15,6 +20,9 @@ def run(
     cxxflags += f" {os.environ.get('CXXFLAGS', '')}"
     ldflags = build_env.get_build_flag("SIDE_MODULE_LDFLAGS")
     ldflags += f" {os.environ.get('LDFLAGS', '')}"
+    target_install_dir = os.environ.get(
+        "TARGETINSTALLDIR", build_env.get_build_flag("TARGETINSTALLDIR")
+    )
     env = os.environ.copy()
     env.update(build_env.get_build_environment_vars())
 
@@ -24,12 +32,12 @@ def run(
         cflags=cflags,
         cxxflags=cxxflags,
         ldflags=ldflags,
-        target_install_dir="",
+        target_install_dir=target_install_dir,
         exports=exports,
     )
 
     with build_env_ctx as env:
-        built_wheel = pypabuild.build(srcdir, outdir, env, " ".join(args))
+        built_wheel = pypabuild.build(srcdir, outdir, env, config_settings)
 
     wheel_path = Path(built_wheel)
     with common.modify_wheel(wheel_path) as wheel_dir:

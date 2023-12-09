@@ -426,7 +426,7 @@ def compile(
         target_install_dir=target_install_dir,
         exports=build_metadata.exports,
     )
-    backend_flags = build_metadata.backend_flags
+    config_settings = pypabuild.parse_backend_flags(build_metadata.backend_flags)
 
     with build_env_ctx as build_env:
         if build_metadata.cross_script is not None:
@@ -439,7 +439,7 @@ def compile(
         from .pypabuild import build
 
         outpath = srcpath / "dist"
-        build(srcpath, outpath, build_env, backend_flags)
+        build(srcpath, outpath, build_env, config_settings)
 
 
 def copy_sharedlibs(

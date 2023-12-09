@@ -36,6 +36,7 @@ build:
     # Add libf2c symbols to libopenblas.so
     emcc ${DISTDIR}/lib/libf2c.a libopenblas.a ${SIDE_MODULE_LDFLAGS} \
         -o ${DISTDIR}/lib/libopenblas.so
+    emmake make install PREFIX=${DISTDIR}
 
   sharedlib-files:
     - lib/libopenblas.so
