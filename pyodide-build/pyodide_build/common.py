@@ -216,7 +216,7 @@ def copy_files(source: list[Path] | Path, dest: Path) -> None:
             raise FileNotFoundError(f"{file_or_dir} does not exist")
         
         if file_or_dir.is_dir():
-            shutil.copytree(file_or_dir, dest / file_or_dir.name, dirs_exist_ok=True)
+            shutil.copytree(file_or_dir, dest, dirs_exist_ok=True)
         else:
             shutil.copy(file_or_dir, dest)
 
