@@ -43,7 +43,7 @@ from .common import (
     find_missing_executables,
     make_zip_archive,
     modify_wheel,
-    copy_files,
+    install_build_artifacts,
 )
 from .io import MetaConfig, _BuildSpec, _SourceSpec
 from .logger import logger
@@ -738,7 +738,7 @@ def _build_package_inner(
 
         if package_type in ("static_library", "shared_library"):
             # Copy libraries and headers so it can be accessed by other packages
-            copy_files(list(src_dist_dir.glob("*")), get_library_install_dir())
+            install_build_artifacts(src_dist_dir, get_library_install_dir())
 
         if package_type == "static_library":
             pass

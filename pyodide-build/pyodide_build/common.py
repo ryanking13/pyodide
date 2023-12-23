@@ -200,25 +200,44 @@ def get_num_cores() -> int:
     return loky.cpu_count()
 
 
-def copy_files(source: list[Path] | Path, dest: Path) -> None:
+def install_build_artifacts(src: Path | str, dst: Path | str, filters: list[Path] | None):
     """
-    Copy a list of files to a destination directory
+    Mimics the behavior of the 'make install'.
+    Copies files (or directories) from src to dst.
+    If src is a directory, its contents are copied (not the directory itself).
+    Existing files at the destination are replaced.
 
-    This function is similar to shutil.copytree, but works even if the
-    destination directory already exists.
+    Parameters
+    ----------
+    src
+        The source file or directory path.
+    dst
+        The destination directory path.
+    filters
+        Only install files that are in filters.
     """
+    src = Path(src)
+    dst = Path(dst)
 
-    if isinstance(source, Path):
-        source = [source]
+    if not src.exists():
+        raise ValueError(f"Source does not exist: {src}")
 
-    for file_or_dir in source:
-        if not file_or_dir.exists():
-            raise FileNotFoundError(f"{file_or_dir} does not exist")
-        
-        if file_or_dir.is_dir():
-            shutil.copytree(file_or_dir, dest, dirs_exist_ok=True)
-        else:
-            shutil.copy(file_or_dir, dest)
+    dst.mkdir(parents=True, exist_ok=True)
+
+    # If the source is a file, copy it
+    if src.is_file():
+        shutil.copy2(src, dst)
+                    
+    # If the source is a directory, copy its contents
+    elif src.is_dir():
+        for item in src.iterdir():
+            destination = dst / item.name
+            if item.is_dir():
+                shutil.copytree(item, destination, dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, destination)
+    else:
+        raise ValueError(f"Source is neither a file nor a directory: {src}")
 
 
 def make_zip_archive(
