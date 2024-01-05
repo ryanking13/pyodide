@@ -50,5 +50,5 @@ build:
 
     emmake make -j ${PYODIDE_JOBS:-3} install
   sharedlib-files:
-    - lib/libhdf5.so*
-    - lib/libhdf5_hl.so*
+    - lib/libhdf5.so
+    - lib/libhdf5_hl.so

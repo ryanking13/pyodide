@@ -30,4 +30,3 @@ build:
     emmake make install
   sharedlib-files:
     - lib/libheif.so
-

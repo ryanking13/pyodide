@@ -200,11 +200,13 @@ def get_num_cores() -> int:
     return loky.cpu_count()
 
 
-def install_build_artifacts(src: Path | str, dst: Path | str, filters: list[Path] | None):
+def install_build_artifacts(
+    src: Path | str, dst: Path | str, content_only: bool = True
+) -> None:
     """
     Mimics the behavior of the 'make install'.
     Copies files (or directories) from src to dst.
-    If src is a directory, its contents are copied (not the directory itself).
+    If src is a directory, its contents are copied recursively.
     Existing files at the destination are replaced.
 
     Parameters
@@ -213,8 +215,9 @@ def install_build_artifacts(src: Path | str, dst: Path | str, filters: list[Path
         The source file or directory path.
     dst
         The destination directory path.
-    filters
-        Only install files that are in filters.
+    content_only
+        If True, the contents of the src directory are copied to dst.
+        If False, the src directory is copied to dst.
     """
     src = Path(src)
     dst = Path(dst)
@@ -227,15 +230,17 @@ def install_build_artifacts(src: Path | str, dst: Path | str, filters: list[Path
     # If the source is a file, copy it
     if src.is_file():
         shutil.copy2(src, dst)
-                    
+
     # If the source is a directory, copy its contents
     elif src.is_dir():
-        for item in src.iterdir():
+        items = src.iterdir() if content_only else [src]
+        for item in items:
             destination = dst / item.name
             if item.is_dir():
                 shutil.copytree(item, destination, dirs_exist_ok=True)
             else:
                 shutil.copy2(item, destination)
+
     else:
         raise ValueError(f"Source is neither a file nor a directory: {src}")
 

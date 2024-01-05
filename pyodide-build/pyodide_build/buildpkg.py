@@ -29,10 +29,10 @@ from .build_env import (
     RUST_BUILD_PRELUDE,
     get_build_environment_vars,
     get_build_flag,
+    get_library_install_dir,
     get_pyodide_root,
     pyodide_tags,
     replace_so_abi_tags,
-    get_library_install_dir,
 )
 from .common import (
     _environment_substitute_str,
@@ -41,9 +41,9 @@ from .common import (
     exit_with_stdio,
     find_matching_wheels,
     find_missing_executables,
+    install_build_artifacts,
     make_zip_archive,
     modify_wheel,
-    install_build_artifacts,
 )
 from .io import MetaConfig, _BuildSpec, _SourceSpec
 from .logger import logger
@@ -744,8 +744,8 @@ def _build_package_inner(
             pass
 
         elif package_type in ("shared_library", "cpython_module"):
-            # If shared library, we copy .so files to dist_dir
-            # and create a zip archive of the .so files
+            # If shared library or cpython_module, we copy files to dist_dir
+            # and create a zip archive
             shutil.rmtree(dist_dir, ignore_errors=True)
             dist_dir.mkdir(parents=True)
 
@@ -753,7 +753,8 @@ def _build_package_inner(
                 temp_dir = Path(_temp_dir)
                 for file in sharedlib_files:
                     full_paths = list(src_dist_dir.glob(file))
-                    copy_files(full_paths, temp_dir)
+                    for path in full_paths:
+                        install_build_artifacts(path, temp_dir, content_only=False)
 
                 make_zip_archive(dist_dir / f"{src_dir_name}.zip", temp_dir)
         else:  # wheel
