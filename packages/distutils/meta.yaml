@@ -13,5 +13,4 @@ build:
   script: |
     cd Lib && tar --exclude=__pycache__ --exclude=tests -cf - distutils | tar -C $DISTDIR -xf -
   sharedlib-files:
-    - command
-    - "*.py"
+    - distutils
