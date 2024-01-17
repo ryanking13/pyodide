@@ -716,10 +716,18 @@ def _build_package_inner(
         logger.warning("stdout/stderr does not have a fileno, not logging to file")
 
     with chdir(pkg_root), get_bash_runner() as bash_runner:
-        bash_runner.env["PKGDIR"] = str(pkg_root)
-        bash_runner.env["PKG_VERSION"] = version
-        bash_runner.env["PKG_BUILD_DIR"] = str(srcpath)
-        bash_runner.env["DISTDIR"] = str(src_dist_dir)
+        # Set some environment variables that can be used inside the recipe
+        bash_runner.env.update({
+            "PKGDIR": str(pkg_root),
+            "PKG_VERSION": version,
+            "PKG_BUILD_DIR": str(srcpath),
+            "DISTDIR": str(src_dist_dir),
+            "WASM_LIBRARY_DIR": str(pkg_root.parent / ".libs"),
+            # Using PKG_CONFIG_LIBDIR instead of PKG_CONFIG_PATH because
+            # we don't want pkg-config to search system paths
+            "PKG_CONFIG_LIBDIR": str(pkg_root.parent / ".libs/lib/pkgconfig"),
+        })
+
         if not continue_:
             prepare_source(build_dir, srcpath, source_metadata)
             patch(pkg_root, srcpath, source_metadata)
