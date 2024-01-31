@@ -21,13 +21,12 @@ from .common import exit_with_stdio
 from .logger import logger
 from .recipe import load_all_recipes
 
+CONFIG_FILE = Path(__file__) / "tools" / ".pyodide-build.config.toml"
+
 RUST_BUILD_PRELUDE = """
 rustup toolchain install ${RUST_TOOLCHAIN} && rustup default ${RUST_TOOLCHAIN}
 rustup target add wasm32-unknown-emscripten --toolchain ${RUST_TOOLCHAIN}
 """
-
-CONFIG_FILENAME = ".pyodide-build.config.toml"
-
 
 BUILD_VARS: set[str] = {
     "CARGO_BUILD_TARGET",
@@ -163,7 +162,8 @@ def get_build_environment_vars() -> dict[str, str]:
     """
     Get common environment variables for the in-tree and out-of-tree build.
     """
-    env = _get_make_environment_vars().copy()
+    env = _get_config_vars(CONFIG_FILE)
+    env.update(_get_make_environment_vars())
 
     # Allow users to overwrite the build environment variables by setting
     # host environment variables.
@@ -231,6 +231,16 @@ def _get_make_environment_vars(*, pyodide_root: Path | None = None) -> dict[str,
             environment[varname] = value
     return environment
 
+
+def _get_config_vars(config_file: str | Path) -> dict[str, str]:
+    config_file = Path(config_file).resolve()
+
+    if not config_file.is_file():
+        raise FileNotFoundError(f"pyodide-build config file not found: {config_file}")
+    
+    config = tomllib.loads(config_file.read_text())
+    return config.get("pyodide-build", {})
+    
 
 def get_build_flag(name: str) -> str:
     """
