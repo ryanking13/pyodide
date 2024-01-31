@@ -1,0 +1,13 @@
+[pyodide-build]
+WASM_LIBRARY_DIR=.libs
+
+# Using PKG_CONFIG_LIBDIR instead of PKG_CONFIG_PATH because
+# we don't want pkg-config to search system paths
+PKG_CONFIG_LIBDIR=.libs/lib/pkgconfig
+
+# For rust
+CARGO_BUILD_TARGET = "wasm32-unknown-emscripten"
+CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER = "emcc"
+RUST_TOOLCHAIN = "nightly-2023-04-29"
+RUSTFLAGS = "-C link-arg=-sSIDE_MODULE=2 -C link-arg=-sWASM_BIGINT -Z link-native-libraries=no"
+
