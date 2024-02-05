@@ -79,16 +79,9 @@ def _gen_runner(
 
 def symlink_unisolated_packages(env: DefaultIsolatedEnv) -> None:
     pyversion = get_pyversion()
-    site_packages_path = f"lib/{pyversion}/site-packages"
-    env_site_packages = Path(env.path) / site_packages_path
-    sysconfigdata_name = get_build_flag("SYSCONFIG_NAME")
-    sysconfigdata_path = (
-        Path(get_build_flag("TARGETINSTALLDIR"))
-        / f"sysconfigdata/{sysconfigdata_name}.py"
-    )
-
+    env_site_packages = Path(env.path) / f"lib/{pyversion}/site-packages"
     env_site_packages.mkdir(parents=True, exist_ok=True)
-    shutil.copy(sysconfigdata_path, env_site_packages)
+    
     host_site_packages = Path(get_hostsitepackages())
     for name in get_unisolated_packages():
         for path in chain(
