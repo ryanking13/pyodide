@@ -74,7 +74,7 @@ check_patch() {
 check_python_version
 check_pkgconfig
 check_cmake
-check_sed
+#check_sed
 check_patch
 #check_python_headers
 check_shasum
