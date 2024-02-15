@@ -31,8 +31,8 @@ build:
     # LLVM bundled with Emscripten >= 3.1.47 has a parser bug regarding
     # the comment. Until the bug is fixed, this is a temporary workaround to avoid the bug (removing comments).
     # See: https://github.com/llvm/llvm-project/issues/67979
-    sed -i -e 's|//.*||' -e 's|/\*.*\*/||' alg/gdalgeoloc.cpp
-    sed -i -e 's|//.*||' -e 's|/\*.*\*/||' frmts/pds/pds4vector.cpp
+    sed -i'' -e 's|//.*||' -e 's|/\*.*\*/||' alg/gdalgeoloc.cpp
+    sed -i'' -e 's|//.*||' -e 's|/\*.*\*/||' frmts/pds/pds4vector.cpp
 
     mkdir -p build
     cd build && emcmake cmake .. \

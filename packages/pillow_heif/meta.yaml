@@ -16,8 +16,8 @@ requirements:
     - libheif
 build:
   script: |
-    sed -i "s@include_dirs = \[@include_dirs = ['\\${WASM_LIBRARY_DIR}/include', @" libheif/build.py
-    sed -i "s@library_dirs = \[@library_dirs = ['\\${WASM_LIBRARY_DIR}/lib', @" libheif/build.py
+    sed -i'' "s@include_dirs = \[@include_dirs = ['\\${WASM_LIBRARY_DIR}/include', @" libheif/build.py
+    sed -i'' "s@library_dirs = \[@library_dirs = ['\\${WASM_LIBRARY_DIR}/lib', @" libheif/build.py
 test:
   imports:
     - pillow_heif

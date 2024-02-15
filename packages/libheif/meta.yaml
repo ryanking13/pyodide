@@ -16,7 +16,7 @@ build:
   script: |
     # Build options are adapted from https://github.com/strukturag/libheif/blob/v1.12.0/build-emscripten.sh
     # heif_emscripten.h is for building js APIs, but we don't want them.
-    sed -i 's@#include "heif_emscripten.h"@@' libheif/heif.cc
+    sed -i'' 's@#include "heif_emscripten.h"@@' libheif/heif.cc
     emcmake cmake \
       -DCMAKE_CXX_FLAGS="-fPIC" \
       -DCMAKE_INSTALL_PREFIX=${WASM_LIBRARY_DIR} \

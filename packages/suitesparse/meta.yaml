@@ -19,8 +19,8 @@ build:
   type: shared_library
   script: |
     # Fix return type to avoid linker error
-    grep -rl "void LAPACK" . | xargs sed -i 's/void LAPACK/int LAPACK/g'
-    grep -rl "void BLAS" . | xargs sed -i 's/void BLAS/int BLAS/g'
+    grep -rl "void LAPACK" . | xargs sed -i'' 's/void LAPACK/int LAPACK/g'
+    grep -rl "void BLAS" . | xargs sed -i'' 's/void BLAS/int BLAS/g'
 
     emmake make -j ${PYODIDE_JOBS:-3} install \
       LDFLAGS="${SIDE_MODULE_LDFLAGS} -L${WASM_LIBRARY_DIR}/lib " \
