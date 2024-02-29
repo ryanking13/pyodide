@@ -11,8 +11,6 @@ requirements:
     - cffi
     - Pillow
     - libheif
-  host:
-    - cffi
     - libheif
 build:
   script: |

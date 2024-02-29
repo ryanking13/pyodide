@@ -26,7 +26,6 @@ requirements:
     - cffi
   host:
     - openssl
-    - cffi
   executable:
     - rustup
 test:

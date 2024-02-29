@@ -4,8 +4,6 @@ package:
   top-level:
     - peewee
 requirements:
-  host:
-    - cffi
   run:
     - sqlite3
     - cffi
