@@ -53,6 +53,15 @@
       "emscripten_version": "3.1.46",
       "min_pyodide_build_version": "0.25.0",
       "max_pyodide_build_version": "0.25.0"
+    },
+    "0.24.1": {
+      "version": "0.24.1",
+      "url": "https://github.com/pyodide/pyodide/releases/download/0.24.1/xbuildenv-0.24.1.tar.bz2",
+      "sha256": "6de125521117b0bdf839a79a39998e908444bfe49fcc0168124413286e8b7d84",
+      "python_version": "FIXME",
+      "emscripten_version": "FIXME",
+      "min_pyodide_build_version": "FIXME",
+      "max_pyodide_build_version": "FIXME"
     }
   }
 }
