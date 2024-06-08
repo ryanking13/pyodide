@@ -26,7 +26,8 @@ SYMLINKS = {
     "gcc",
     "ranlib",
     "strip",
-    "gfortran",
+    "flang",
+    "flang-new",
     "cargo",
     "cmake",
     "meson",
@@ -245,8 +246,15 @@ def replay_genargs_handle_argument(arg: str) -> str | None:
 
     if arg.startswith((
         "-J",  # fortran flag that clang does not support
+        "-fdiagnostics-color",
+        "-Minform",
+        "-MD",
     )):
         return None
+
+    if arg == '-module':
+        # llvm-flang
+        return '-module-dir'
 
     # fmt: on
     return arg
@@ -482,6 +490,10 @@ def handle_command_generate_args(  # noqa: C901
         # distutils doesn't use the c++ compiler when compiling c++ <sigh>
         if any(arg.endswith((".cpp", ".cc")) for arg in line):
             new_args = ["em++"]
+    elif cmd in ("flang", "flang-new"):
+        print("!!!!!!!!!!!!!! flang call !!!!!!!!!!!!!!", file=sys.stderr)
+        print(line, file=sys.stderr)
+        new_args = ["flang"]
     elif cmd == "ar":
         line[0] = "emar"
         return line
@@ -536,6 +548,10 @@ def handle_command_generate_args(  # noqa: C901
             # Ignore it.
             del new_args[-1]
             continue
+        if new_args[-1] in ("-MQ", "-MF"):
+            # flang-new does not support these flags
+            del new_args[-1]
+            continue
 
         if arg.startswith("-l"):
             result = replay_genargs_handle_dashl(arg, used_libs)
@@ -549,13 +565,13 @@ def handle_command_generate_args(  # noqa: C901
         if result:
             new_args.append(result)
 
-    new_args.extend(
-        [
-            "-Werror=implicit-function-declaration",
-            "-Werror=mismatched-parameter-types",
-            "-Werror=return-type",
-        ]
-    )
+    # new_args.extend(
+    #     [
+    #         "-Werror=implicit-function-declaration",
+    #         "-Werror=mismatched-parameter-types",
+    #         "-Werror=return-type",
+    #     ]
+    # )
 
     # set linker and C flags to error on anything to do with function declarations being wrong.
     # Better to fail at compile or link time.
@@ -591,6 +607,7 @@ def handle_command(
     """
 
     if line[0] == "gfortran":
+        print("!!!!!!!!!!!!!! gfortran call !!!!!!!!!!!!!!")
         from pyodide_build._f2c_fixes import replay_f2c
 
         tmp = replay_f2c(line)
@@ -603,11 +620,12 @@ def handle_command(
 
     new_args = handle_command_generate_args(line, build_args)
 
-    if build_args.pkgname == "scipy":
-        from pyodide_build._f2c_fixes import scipy_fixes
+    # if build_args.pkgname == "scipy":
+    #     from pyodide_build._f2c_fixes import scipy_fixes
 
-        scipy_fixes(new_args)
+    #     scipy_fixes(new_args)
 
+    print(new_args, file=sys.stderr)
     result = subprocess.run(new_args)
     return result.returncode
 

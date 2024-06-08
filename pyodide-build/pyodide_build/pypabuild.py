@@ -51,7 +51,7 @@ SYMLINK_ENV_VARS = {
     "gcc": "GCC",
     "ranlib": "RANLIB",
     "strip": "STRIP",
-    "gfortran": "FC",  # https://mesonbuild.com/Reference-tables.html#compiler-and-linker-selection-variables
+    "flang": "FC",  # https://mesonbuild.com/Reference-tables.html#compiler-and-linker-selection-variables
 }
 
 
