@@ -1,7 +1,7 @@
 From d4d5d35072b6d28c5f98b77a0d578e01bd25ef7e Mon Sep 17 00:00:00 2001
 From: Hood Chatham <roberthoodchatham@gmail.com>
 Date: Thu, 22 Jun 2023 18:53:22 -0700
-Subject: [PATCH 3/6] Changes for JSPI
+Subject: [PATCH 3/4] Changes for JSPI
 
 ---
  src/library.js        | 2 +-
@@ -32,7 +32,7 @@ index cea3ce05d..c3f3c2bbf 100644
    $createInvokeFunction__internal: true,
    $createInvokeFunction__deps: ['$dynCall', 'setThrew', '$stackSave', '$stackRestore'],
 +  $createInvokeFunction__postset: "if(!Module.createInvoke) { Module.createInvoke = Module.createInvokeFunction; }",
-   $createInvokeFunction: (sig) => {
+   $createInvokeFunction: (sig) => (ptr, ...args) => {
      return function() {
        var sp = stackSave();
 @@ -125,7 +126,7 @@ var LibraryDylink = {
