@@ -1,4 +1,4 @@
-import { defines } from "./generated_struct_info32.json";
+import { defines } from "./struct_info_generated.json";
 
 declare global {
   /** @private */
