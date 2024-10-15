@@ -16,6 +16,7 @@ defaults: &defaults
       CCACHE_DIR: /root/.ccache/
       # Disable the compression of wheels, so they are better compressed by the CDN
       PYODIDE_ZIP_COMPRESSION_LEVEL: 0
+      CARGO_HOME: /usr
 
 jobs:
   build-core:
