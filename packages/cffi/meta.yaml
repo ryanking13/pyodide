@@ -11,8 +11,6 @@ source:
   sha256: bcb3ef43e58665bbda2fb198698fcae6776483e0c4a631aa5647806c25e02cc0
   patches:
     - patches/0001-Use-libffi-in-emscripten.patch
-build:
-  cross-build-env: true
 about:
   home: http://cffi.readthedocs.org
   PyPI: https://pypi.org/project/cffi
