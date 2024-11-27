@@ -46,6 +46,7 @@ build:
     -Wno-return-type
     -DUNDERSCORE_G77
     -fvisibility=default
+    -DNPY_API_SYMBOL_ATTRIBUTE=__attribute__((visibility("default")))
   cxxflags: |
     -fexceptions
     -fvisibility=default

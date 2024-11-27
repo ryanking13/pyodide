@@ -25,7 +25,6 @@ build:
   # 1. https://github.com/numpy/numpy/pull/26286, and
   # 2. https://github.com/numpy/numpy/pull/26103.
   cflags: |
-    -DNPY_API_SYMBOL_ATTRIBUTE=__attribute__((visibility("default")))
     -Wno-return-type
   cross-build-env: true
   cross-build-files:
