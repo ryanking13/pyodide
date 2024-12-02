@@ -49,24 +49,22 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 
 RUN npm install -g \
   jsdoc \
-  prettier \
-  rollup \
-  rollup-plugin-terser
+  prettier
 
 # Get Chrome and Firefox (borrowed from https://github.com/SeleniumHQ/docker-selenium)
 
 ARG CHROME_VERSION="latest"
 ARG FIREFOX_VERSION="latest"
 # Note: geckodriver version needs to be updated manually
-ARG GECKODRIVER_VERSION="0.34.0"
+ARG GECKODRIVER_VERSION="0.35.0"
 
 #============================================
 # Firefox & geckodriver
 #============================================
 # can specify Firefox version by FIREFOX_VERSION;
 #  e.g. latest
-#       95
-#       96
+#       130
+#       131
 #
 # can specify Firefox geckodriver version by GECKODRIVER_VERSION;
 #============================================
@@ -96,15 +94,15 @@ RUN if [ $FIREFOX_VERSION = "latest" ] || [ $FIREFOX_VERSION = "nightly-latest" 
 #============================================
 # can specify Chrome version by CHROME_VERSION;
 #  e.g. latest
-#       96
-#       97
+#       130
+#       131
 #============================================
 
 RUN if [ $CHROME_VERSION = "latest" ]; \
   then CHROME_VERSION_FULL=$(wget --no-verbose -O - "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE"); \
   else CHROME_VERSION_FULL=$(wget --no-verbose -O - "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_${CHROME_VERSION}"); \
   fi \
-  && CHROME_DOWNLOAD_URL="https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb." \
+  && CHROME_DOWNLOAD_URL="https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION_FULL}-1_amd64.deb" \
   && CHROMEDRIVER_DOWNLOAD_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION_FULL}/linux64/chromedriver-linux64.zip" \
   && wget --no-verbose -O /tmp/google-chrome.deb ${CHROME_DOWNLOAD_URL} \
   && apt-get update \
