@@ -19,6 +19,11 @@ emsdk/.complete: ../Makefile.envs $(wildcard patches/*.patch)
 			exit 1 \
 		)
 
+	rm -rf emsdk/upstream/emscripten/flang-new emsdk/upstream/emscripten/flang
+	rm -rf emsdk/upstream/emscripten/libFortranRuntime.a
+	cd emsdk/upstream/emscripten && wget https://github.com/ryanking13/flang-llvm-emscripten/releases/download/3.1.58-20240607/flang-new && chmod +x flang-new && cp flang-new flang
+	cd emsdk/upstream/emscripten && wget https://github.com/ryanking13/flang-llvm-emscripten/releases/download/3.1.58-20240607/libFortranRuntime.a
+
 	touch emsdk/.complete
 
 
