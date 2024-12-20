@@ -123,6 +123,9 @@ build:
     # Prevent from using response file. The response file that meson generates is not compatible to pyodide-build
     export MESON_RSP_THRESHOLD=131072
 
+    # Add flang to path
+    export PATH=$PATH:$(em-config EMSCRIPTEN_ROOT)/../bin
+
   _retain-test-patterns:
     - "*_page_trend_test.py"
     - "*bws_test.py"
