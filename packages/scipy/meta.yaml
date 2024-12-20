@@ -125,6 +125,12 @@ build:
 
     # Add flang to path
     export PATH=$PATH:$(em-config EMSCRIPTEN_ROOT)/../bin
+    sed -i 's/fortran_std=legacy/fortran_std=none/g' meson.build
+
+    grep -rl "integer" scipy/sparse/linalg/_propack/PROPACK | xargs sed -i 's/integer/integer(4)/g'
+    grep -rl "real" scipy/sparse/linalg/_propack/PROPACK | xargs sed -i 's/real/real(4)/g'
+
+    grep -rl "external second" scipy/sparse/linalg/_propack/PROPACK | xargs sed -i 's/external second//g'
 
   _retain-test-patterns:
     - "*_page_trend_test.py"
