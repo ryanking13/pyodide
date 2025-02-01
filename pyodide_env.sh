@@ -14,6 +14,6 @@ EM_DIR=$(dirname "$EMCC_PATH")
 export EM_DIR
 
 # Following two variables are set by emsdk activated otherwise
-export _EMCC_CCACHE=1
+# export _EMCC_CCACHE=1
 # mtime of this file is checked by ccache, we set it to avoid cache misses.
 export EM_CONFIG="$ROOT/emsdk/emsdk/.emscripten"

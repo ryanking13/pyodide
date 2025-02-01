@@ -17,6 +17,8 @@ requirements:
 build:
   type: shared_library
   script: |
+    embuilder build zlib --pic
+    
     mkdir -p build;
 
     cd build \

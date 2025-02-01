@@ -1,8 +1,6 @@
 package:
   name: netcdf4
   version: 1.7.2
-  # symbol type mismatch
-  _disabled: true
   top-level:
     - netCDF4
 source:
@@ -27,8 +25,12 @@ build:
     export PATH=${WASM_LIBRARY_DIR}/bin:${PATH}
     export HDF5_DIR=${WASM_LIBRARY_DIR}
     echo ${HDF5_DIR}
+
+    embuilder build bzip2 --pic
   ldflags: |
     -L$(WASM_LIBRARY_DIR)/lib
+    --unresolved-symbols=import-dynamic
+    --no-shlib-sigcheck
     -lhdf5
     -lhdf5_hl
 about:

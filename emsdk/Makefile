@@ -3,9 +3,14 @@ include ../Makefile.envs
 
 all: emsdk/.complete
 
+# https://chromium.googlesource.com/emscripten-releases
+
 emsdk/.complete: ../Makefile.envs $(wildcard patches/*.patch)
 	if [ -d emsdk ]; then rm -rf emsdk; fi
 	git clone --depth 1 https://github.com/emscripten-core/emsdk.git
+
+	# sed -i 's/fd61bacaf40131f74987e649a135f1dd559aff60/6a6b24d4313de356848fae807d6b5e674c8b7597/g' emsdk/emscripten-releases-tags.json
+
 	cd emsdk && ./emsdk install --build=Release $(PYODIDE_EMSCRIPTEN_VERSION)
 	cd emsdk/upstream/emscripten/ && cat ../../../patches/*.patch | patch -p1 --verbose
 	cd emsdk && ./emsdk install --build=Release $(PYODIDE_EMSCRIPTEN_VERSION) ccache-git-emscripten-64bit
