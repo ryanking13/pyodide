@@ -1,24 +1,36 @@
 package:
   name: pygame-ce
-  version: 2.4.1
-  # Need newer version for 3.13 compat see https://github.com/pyodide/pyodide/pull/5522
-  _disabled: true
+  version: 2.5.3
   top-level:
     - pygame
 source:
-  url: https://files.pythonhosted.org/packages/dc/b1/64fffc2c8664497ae82b2afb4f5efe0130d38b39f2d25af0288c4261df3e/pygame-ce-2.4.1.tar.gz
-  sha256: 70a84aa1417c633a0fd6754ffa5dc92ee1b9aeb70baaa52c8c8c94a7c6db9cf0
+  url: https://files.pythonhosted.org/packages/source/p/pygame_ce/pygame_ce-2.5.3.tar.gz
+  sha256: dc04f0bf1a270a84eb371556298a9902b9c4ab08137c9dd10ef03fa4e7fcbfed
+  extras:
+    - [extras/meson.build, meson.build]
+    - [extras/src_c/_sdl2/meson.build, src_c/_sdl2/meson.build]
+    - [extras/src_c/meson.build, src_c/meson.build]
+    - [extras/src_c/static.c, src_c/static.c]
   patches:
     - patches/0001-Replace-OpenAudioDevice-with-OpenAudio.patch
-    - patches/0001-freetype-init.patch
-    - patches/0001-wasm_unify_pygame_web_pyodide_static_Freetype_init.patch
+    - patches/0002-freetype-init.patch
 requirements:
   constraint:
     - setuptools < 75
 build:
   script: |
     embuilder build sdl2 sdl2_ttf sdl2_image sdl2_mixer sdl2_gfx libjpeg libpng giflib harfbuzz vorbis mpg123 libmodplug freetype libhtml5 --pic
+
+    # Build sdl2_mixer with formats enabled.
+    # this is a workaround until https://github.com/emscripten-core/emscripten/pull/24158 is merged and released
+    # We build both libSDL2_mixer.a and libSDL2_mixer.a with different formats here,
+    # because meson will detect find the file "libSDL2_mixer.a" while emscripten puts formats in the name.
+    touch temp.c
+    emcc temp.c -fPIC -sRELOCATABLE=1 -sUSE_SDL_MIXER=2 -sSDL2_MIXER_FORMATS=
+    emcc temp.c -fPIC -sRELOCATABLE=1 -sUSE_SDL_MIXER=2 -sSDL2_MIXER_FORMATS=mid,mod,mp3,ogg
     export SDL_CONFIG=$(em-config CACHE)/sysroot/bin/sdl2-config
+  backend-flags: |
+    setup-args=-Dmidi=disabled build-dir=build
   cflags: |
     -sRELOCATABLE=1
     -DSDL_NO_COMPAT
@@ -26,7 +38,7 @@ build:
     -ferror-limit=1
     -sUSE_SDL=2
     -sUSE_SDL_MIXER=2
-    -sSDL2_MIXER_FORMATS=mid,mod,mpg,ogg
+    -sSDL2_MIXER_FORMATS=mid,mod,mp3,ogg
     -sUSE_SDL_TTF=2
     -sUSE_SDL_IMAGE=2
     -sSDL2_IMAGE_FORMATS=bmp,gif,jpg,png
@@ -41,7 +53,7 @@ build:
     -sRELOCATABLE=1
     -sUSE_SDL=2
     -sUSE_SDL_MIXER=2
-    -sSDL2_MIXER_FORMATS=mid,mod,mpg,ogg
+    -sSDL2_MIXER_FORMATS=mid,mod,mp3,ogg
     -sUSE_SDL_TTF=2
     -sUSE_SDL_IMAGE=2
     -sSDL2_IMAGE_FORMATS=bmp,gif,jpg,png
@@ -61,7 +73,7 @@ build:
     # This is okay when all these modules are bundled in a single module: libpython.
     # But as we don't do that, we need to load these modules globally, so that
     # pygame_static can see the symbols.
-    STATIC_OBJS=$(find ${PKG_BUILD_DIR} -name "*.o")
+    STATIC_OBJS=$(find ${PKG_BUILD_DIR}/build -name "*.o")
     echo "build dir: " $PKG_BUILD_DIR
     echo "static objs: " $STATIC_OBJS
 
@@ -75,7 +87,7 @@ build:
       -lSDL2 \
       -lSDL2_image-bmp-gif-jpg-png-wasm-sjlj \
       -lSDL2_ttf \
-      -lSDL2_mixer_mid-mod-mpg-ogg \
+      -lSDL2_mixer-mid-mod-mp3-ogg \
       -lSDL2_gfx \
       -lfreetype-legacysjlj \
       -lharfbuzz \

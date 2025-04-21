@@ -21,12 +21,19 @@ def selenium_sdl(selenium_standalone):
     yield selenium_standalone
 
 
-@run_in_pyodide(packages=["pygame-ce"])
+# @run_in_pyodide(packages=["pygame-ce"])
+# def test_init(selenium_sdl):
+#     import pygame.display
+
+#     pygame.display.init()
+
 def test_init(selenium_sdl):
+    selenium_sdl.load_package("pygame-ce")
+    selenium_sdl.run("""
     import pygame.display
-
+                     
     pygame.display.init()
-
+    """)
 
 def test_keyboard_input():
     """
