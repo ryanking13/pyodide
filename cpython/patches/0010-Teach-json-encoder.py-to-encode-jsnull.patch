@@ -89,7 +89,7 @@ index 2f82a69a157..6104aea8832 100644
          keystr = encoder_encode_float(s, key);
      }
 -    else if (key == Py_True || key == Py_False || key == Py_None) {
-+    else if (key == Py_True || key == Py_False || key == Py_None || obj == py_jsnull) {
++    else if (key == Py_True || key == Py_False || key == Py_None || key == py_jsnull) {
                      /* This must come before the PyLong_Check because
                         True and False are also 1 and 0.*/
          keystr = _encoded_const(key);
