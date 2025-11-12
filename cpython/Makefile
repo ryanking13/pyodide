@@ -141,7 +141,7 @@ $(PYBUILD)/Makefile: $(PYBUILD)/.patched
 	#   so it is more efficient to use 30 bit digits.
 	( \
 		cd $(PYBUILD); \
-		CONFIG_SITE=./Tools/wasm/config.site-wasm32-emscripten READELF=true emconfigure \
+		CONFIG_SITE=./Tools/wasm/emscripten/config.site-wasm32-emscripten READELF=true emconfigure \
 		  ./configure \
 			  CFLAGS="${PYTHON_CFLAGS}" \
 			  CPPFLAGS="-sUSE_BZIP2=1 -sUSE_ZLIB=1" \
