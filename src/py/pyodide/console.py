@@ -163,7 +163,13 @@ class _Compile(Compile):
         self.optimize = optimize
 
     def __call__(  # type: ignore[override]
-        self, source: str, filename: str, symbol: str, *, incomplete_input: bool = True, flags: int = 0x0,
+        self,
+        source: str,
+        filename: str,
+        symbol: str,
+        *,
+        incomplete_input: bool = True,
+        flags: int = 0x0,
     ) -> CodeRunner:
         return_mode = self.return_mode
         try:
