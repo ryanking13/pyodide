@@ -1,6 +1,6 @@
 import { DynlibLoader } from "./dynload";
-import { uriToPackageData } from "./packaging-utils";
 import { PackageManagerAPI, PackageManagerModule } from "./types";
+import { PyProxy } from "generated/pyproxy";
 
 /**
  * The Installer class is responsible for installing packages into the Pyodide filesystem.
@@ -21,7 +21,7 @@ export class Installer {
   }
 
   async install(
-    buffer: Uint8Array,
+    buffer: Uint8Array | PyProxy,
     filename: string,
     installDir: string,
     metadata?: ReadonlyMap<string, string>,

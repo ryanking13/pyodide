@@ -1048,6 +1048,7 @@ def test_install_api(selenium_standalone, httpserver):
         f"""
         wheelData = await fetch("{request_url}");
         wheelDataArr = new Uint8Array(await wheelData.arrayBuffer());
+        console.log(wheelDataArr);
         await pyodide._api.install(
           wheelDataArr,
           "{test_file_name}",
@@ -1072,6 +1073,45 @@ def test_install_api(selenium_standalone, httpserver):
         assert (d / "dummy_pkg").is_dir(), "package directory not found"
 
     _run(selenium, install_dir)
+
+
+def test_install_api_from_python(selenium_standalone, httpserver):
+    selenium = selenium_standalone
+
+    test_file_name = "dummy_pkg-0.1.0-py3-none-any.whl"
+    test_file_path = Path(__file__).parent / "wheels" / test_file_name
+    test_file_data = test_file_path.read_bytes()
+    install_dir = "/random_install_dir"
+
+    httpserver.expect_oneshot_request("/" + test_file_name).respond_with_data(
+        test_file_data,
+        content_type="application/zip",
+        headers={"Access-Control-Allow-Origin": "*"},
+        status=200,
+    )
+    request_url = httpserver.url_for("/" + test_file_name)
+
+    @run_in_pyodide
+    async def _run(selenium, request_url, test_file_name, install_dir):
+        import pathlib
+        from pyodide.http import pyfetch
+        from pyodide_js._api import install
+
+        wheelData = await pyfetch(request_url)
+        wheelDataBytes = await wheelData.bytes()
+        await install(wheelDataBytes, test_file_name, install_dir, {"INSTALLER": "pytest"})
+
+        d = pathlib.Path(install_dir)
+        assert d.is_dir(), f"Directory {d} not found"
+        assert (d / "dummy_pkg-0.1.0.dist-info").is_dir(), (
+            "dist-info directory not found"
+        )
+        assert (d / "dummy_pkg-0.1.0.dist-info" / "INSTALLER").is_file(), (
+            "INSTALLER file not found"
+        )
+        assert (d / "dummy_pkg").is_dir(), "package directory not found"
+
+    _run(selenium, request_url, test_file_name, install_dir)
 
 
 def test_load_package_stream(selenium_standalone, httpserver):

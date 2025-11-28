@@ -188,7 +188,7 @@ def get_install_dir(target: Literal["site", "dynlib"] | None = None) -> str:
 
 
 def unpack_buffer(
-    buffer: JsBuffer,
+    buffer: JsBuffer | bytes,
     *,
     filename: str = "",
     format: str | None = None,
@@ -204,7 +204,8 @@ def unpack_buffer(
     Parameters
     ----------
     buffer
-        A Javascript ``Uint8Array`` with the binary data for the archive.
+        A Javascript ``Uint8Array`` with the binary data for the archive or
+        a Python ``bytes`` object.
 
     filename
         The name of the file we are extracting. We only care about it to figure
@@ -253,7 +254,12 @@ def unpack_buffer(
 
     extract_path.mkdir(parents=True, exist_ok=True)
     with NamedTemporaryFile(suffix=filename) as f:
-        buffer._into_file(f)
+        if isinstance(buffer, bytes):
+            print(buffer)
+            f.write(buffer)
+        else:
+            buffer._into_file(f)
+            
         shutil.unpack_archive(f.name, extract_path, format)
 
         suffix = Path(f.name).suffix
