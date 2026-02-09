@@ -1,19 +1,38 @@
-From f77b16933e726ad13e52c331114250fd283ab46d Mon Sep 17 00:00:00 2001
+From 7460aa10184fc1cd4d09ac044324e00d0536988b Mon Sep 17 00:00:00 2001
 From: Dan Carney <dcarney@cloudflare.com>
-Date: Mon, 9 Feb 2026 09:55:51 +0000
+Date: Mon, 9 Feb 2026 14:02:35 +0000
 Subject: [PATCH] Tail call generator
 
 ---
- Python/ceval_macros.h                     |   2 +-
+ Python/ceval_macros.h                     |   8 +-
  Python/opcode_targets.h                   | 784 +++++++++++++++++++++-
  Tools/cases_generator/target_generator.py |  93 +++
- 3 files changed, 877 insertions(+), 2 deletions(-)
+ 3 files changed, 882 insertions(+), 3 deletions(-)
 
 diff --git a/Python/ceval_macros.h b/Python/ceval_macros.h
-index 4a878d6dff4..6e1306226f3 100644
+index 4a878d6dff4..e26b76dbf23 100644
 --- a/Python/ceval_macros.h
 +++ b/Python/ceval_macros.h
-@@ -95,7 +95,7 @@
+@@ -80,7 +80,7 @@
+ 
+ #if Py_TAIL_CALL_INTERP
+ #   if defined(__clang__) || defined(__GNUC__)
+-#       if !_Py__has_attribute(preserve_none) || !_Py__has_attribute(musttail)
++#       if !_Py__has_attribute(musttail)
+ #           error "This compiler does not have support for efficient tail calling."
+ #       endif
+ #   elif defined(_MSC_VER)
+@@ -89,13 +89,17 @@
+ 
+     // Note: [[clang::musttail]] works for GCC 15, but not __attribute__((musttail)) at the moment.
+ #   define Py_MUSTTAIL [[clang::musttail]]
++#ifdef __EMSCRIPTEN__
++#   define Py_PRESERVE_NONE_CC
++#else
+ #   define Py_PRESERVE_NONE_CC __attribute__((preserve_none))
++#endif
+     Py_PRESERVE_NONE_CC typedef PyObject* (*py_tail_call_funcptr)(TAIL_CALL_PARAMS);
+ 
  #   define TARGET(op) Py_PRESERVE_NONE_CC PyObject *_TAIL_CALL_##op(TAIL_CALL_PARAMS)
  #   define DISPATCH_GOTO() \
          do { \
