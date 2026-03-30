@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Pyodide <pyodide@pyodide.org>
+Date: Sun, 30 Mar 2025 00:00:00 +0000
+Subject: [PATCH 11/11] Remove Py_ALWAYS_INLINE to let LLVM decide inlining
+
+On wasm32 at -Oz, forced inlining of refcount functions (Py_INCREF,
+Py_DECREF, etc.) via Py_ALWAYS_INLINE duplicates ~730 KB of code across
+all translation units. Removing the forced inlining lets LLVM's cost
+model decide per call site — still inlining in hot paths while keeping
+cold paths compact. The wasm JIT (V8 TurboFan / SpiderMonkey Ion)
+re-inlines hot call sites at runtime.
+
+See uninlining.md for full analysis.
+---
+ Include/pyport.h | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
+
+diff --git a/Include/pyport.h b/Include/pyport.h
+index 1234567..0000000 100644
+--- a/Include/pyport.h
++++ b/Include/pyport.h
+@@ -325,16 +325,11 @@
+ //
+ //     static inline Py_ALWAYS_INLINE int random(void) { return 4; }
+-#if defined(Py_DEBUG)
+-   // If Python is built in debug mode, usually compiler optimizations are
+-   // disabled. In this case, Py_ALWAYS_INLINE can increase a lot the stack
+-   // memory usage. For example, forcing inlining using gcc -O0 increases the
+-   // stack usage from 6 KB to 15 KB per Python function call.
+-#  define Py_ALWAYS_INLINE
+-#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+-#  define Py_ALWAYS_INLINE __attribute__((always_inline))
+-#elif defined(_MSC_VER)
+-#  define Py_ALWAYS_INLINE __forceinline
+-#else
+-#  define Py_ALWAYS_INLINE
+-#endif
++// Pyodide: define Py_ALWAYS_INLINE as empty to let LLVM decide inlining
++// at -Oz. Forced always_inline duplicates refcount functions across every
++// translation unit (~730 KB in NumPy alone). The wasm JIT re-inlines hot
++// call sites at runtime.
++#define Py_ALWAYS_INLINE
+ 
+ // Py_NO_INLINE
