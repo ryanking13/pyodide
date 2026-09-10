@@ -580,8 +580,17 @@ export interface API {
     recv: (fd: number, nbytes: number) => Promise<Uint8Array | number>;
     send: (fd: number, data: any) => Promise<number>;
     startTls: (fd: number) => Promise<number>;
+    isNodeSock: (fd: number) => boolean;
+    watchRead: (fd: number) => NodeSockReadinessWatcher;
+    watchWrite: (fd: number) => NodeSockReadinessWatcher;
   };
 }
+
+type NodeSockReadinessWatcher = {
+  promise: Promise<boolean>;
+  cancel: () => void;
+  isCurrent: () => boolean;
+};
 
 // Subset of the API and Module that the package manager needs
 /**

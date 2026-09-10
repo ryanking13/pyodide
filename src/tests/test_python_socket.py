@@ -662,6 +662,171 @@ def test_socket_nonblocking_recv_with_buffered_data(selenium_nodesock):
         assert result == b"hello"
 
 
+@pytest.mark.parametrize("timeout", [2.0, None])
+def test_socket_select_returns_when_any_socket_is_readable(selenium_nodesock, timeout):
+    """select() returns for one ready NodeSockFS socket without waiting for another."""
+
+    release_blocked_handler = threading.Event()
+
+    def ready_handler(conn, _addr):
+        assert conn.recv(1024) == b"ready"
+        conn.sendall(b"ready")
+
+    def blocked_handler(conn, _addr):
+        release_blocked_handler.wait(timeout=2.0)
+
+    @run_in_pyodide
+    def run(selenium, host1, port1, host2, port2, timeout):
+        import select
+        import socket
+        import time
+
+        first = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        second = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            first.connect((host1, port1))
+            second.connect((host2, port2))
+            first.sendall(b"ready")
+            started = time.monotonic()
+            readable, _, _ = select.select([first, second], [], [], timeout)
+            elapsed = time.monotonic() - started
+            return first in readable, second in readable, elapsed
+        finally:
+            first.close()
+            second.close()
+
+    with (
+        tcp_server(ready_handler) as (host1, port1),
+        tcp_server(blocked_handler) as (host2, port2),
+    ):
+        first_ready, second_ready, elapsed = run(
+            selenium_nodesock,
+            host1,
+            port1,
+            host2,
+            port2,
+            timeout,
+        )
+        release_blocked_handler.set()
+    assert first_ready
+    assert not second_ready
+    assert elapsed < 1.0
+
+
+def test_socket_select_timeout_zero_reports_all_buffered_sockets(selenium_nodesock):
+    """A timeout-zero select processes every ready NodeSockFS descriptor."""
+
+    def handler(conn, _addr):
+        conn.sendall(b"ready")
+        assert conn.recv(1024) == b""
+
+    @run_in_pyodide
+    def run(selenium, host1, port1, host2, port2):
+        import select
+        import socket
+
+        first = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        second = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            first.connect((host1, port1))
+            second.connect((host2, port2))
+            assert select.select([first], [], [], 5.0)[0] == [first]
+            assert select.select([second], [], [], 5.0)[0] == [second]
+            return select.select([first, second], [], [], 0)[0] == [first, second]
+        finally:
+            first.close()
+            second.close()
+
+    with (
+        tcp_server(handler) as (host1, port1),
+        tcp_server(handler) as (host2, port2),
+    ):
+        assert run(selenium_nodesock, host1, port1, host2, port2)
+
+
+def test_socket_poll_ignores_negative_fd(selenium_nodesock):
+    """poll() clears and ignores negative entries while processing live sockets."""
+
+    def handler(conn, _addr):
+        assert conn.recv(1024) == b""
+
+    @run_in_pyodide
+    def open_socket(selenium, host, port):
+        import builtins
+        import socket
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((host, port))
+        builtins.__dict__["poll_test_socket"] = sock
+        return sock.fileno()
+
+    @run_in_pyodide
+    def close_socket(selenium):
+        import builtins
+
+        builtins.__dict__["poll_test_socket"].close()
+        del builtins.__dict__["poll_test_socket"]
+
+    with tcp_server(handler) as (host, port):
+        fd = open_socket(selenium_nodesock, host, port)
+        try:
+            result, negative_revents, socket_revents = selenium_nodesock.run_js(
+                f"""
+                const pollfds = pyodide._module._malloc(16);
+                try {{
+                  pyodide._module.HEAP32[pollfds >> 2] = -1;
+                  pyodide._module.HEAP16[(pollfds + 4) >> 1] = 1;
+                  pyodide._module.HEAP16[(pollfds + 6) >> 1] = 0x7fff;
+                  pyodide._module.HEAP32[(pollfds + 8) >> 2] = {fd};
+                  pyodide._module.HEAP16[(pollfds + 12) >> 1] = 4;
+                  pyodide._module.HEAP16[(pollfds + 14) >> 1] = 0;
+                  const result = await pyodide._module.SOCKFS.pollAsync(
+                    pollfds,
+                    2,
+                    0,
+                  );
+                  return [
+                    result,
+                    pyodide._module.HEAP16[(pollfds + 6) >> 1],
+                    pyodide._module.HEAP16[(pollfds + 14) >> 1],
+                  ];
+                }} finally {{
+                  pyodide._module._free(pollfds);
+                }}
+                """
+            )
+            assert result == 1
+            assert negative_revents == 0
+            assert socket_revents & 4
+        finally:
+            close_socket(selenium_nodesock)
+
+
+def test_socket_send_after_shutdown_write_raises_epipe(selenium_nodesock):
+    """SHUT_WR puts the NodeSockFS writer into a terminal EPIPE state."""
+
+    def handler(conn, _addr):
+        assert conn.recv(1024) == b""
+
+    @run_in_pyodide(packages=["pytest"])
+    def run(selenium, host, port):
+        import socket
+
+        import pytest
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect((host, port))
+            sock.shutdown(socket.SHUT_WR)
+            with pytest.raises(BrokenPipeError):
+                sock.send(b"after shutdown")
+        finally:
+            sock.close()
+
+    with tcp_server(handler) as (host, port):
+        run(selenium_nodesock, host, port)
+
+
 def test_socket_nonblocking_recv_eagain_then_data(selenium_nodesock):
     """A non-blocking recv reports EAGAIN until an on-demand read surfaces data.
 
@@ -1385,3 +1550,233 @@ def test_tls_starttls_multiple_roundtrips(selenium_nodesock, self_signed_cert):
     with tls_server(handler, *self_signed_cert) as (host, port):
         result = run(selenium_nodesock, host, port)
         assert result == ["echo:msg0", "echo:msg1", "echo:msg2"]
+
+
+def test_asyncio_nodesock_fd_readiness_rejects_unsupported_descriptors(
+    selenium_nodesock,
+):
+    """WebLoop does not expose readiness registration for arbitrary descriptors."""
+
+    @run_in_pyodide(packages=["pytest"])
+    def run(selenium):
+        import asyncio
+        import os
+
+        import pytest
+
+        loop = asyncio.get_event_loop()
+        path = "/nodesock-readiness-test"
+        fd = os.open(path, os.O_CREAT | os.O_RDWR)
+        try:
+            for add in (loop.add_reader, loop.add_writer):
+                with pytest.raises(NotImplementedError):
+                    add(fd, lambda: None)
+
+            # Test negative descriptor
+            with pytest.raises(ValueError):
+                loop.add_reader(-1, lambda: None)
+        finally:
+            os.close(fd)
+            os.unlink(path)
+
+    run(selenium_nodesock)
+
+
+def test_asyncio_nodesock_fd_readiness_callbacks(selenium_nodesock):
+    """WebLoop reader and writer registrations work for NodeSockFS sockets."""
+
+    def handler(conn, _addr):
+        for expected in (b"reader", b"replace", b"remove"):
+            assert conn.recv(1024) == expected
+            conn.sendall(expected)
+
+    @run_in_pyodide
+    async def run(selenium, host, port):
+        import asyncio
+        import contextvars
+        import socket
+
+        loop = asyncio.get_event_loop()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((host, port))
+        fd = sock.fileno()
+        received = []
+        context_value = contextvars.ContextVar("context_value", default="default")
+        writer_called = loop.create_future()
+        reader_called = loop.create_future()
+
+        def writer_callback(arg):
+            loop.remove_writer(fd)
+            if not writer_called.done():
+                writer_called.set_result(arg)
+
+        def reader_callback(arg):
+            received.append((arg, context_value.get(), sock.recv(1024)))
+            loop.remove_reader(sock)
+            if not reader_called.done():
+                reader_called.set_result(None)
+
+        try:
+            loop.add_writer(fd, writer_callback, "writer")
+            token = context_value.set("reader registration")
+            try:
+                loop.add_reader(sock, reader_callback, "reader")
+            finally:
+                context_value.reset(token)
+
+            sock.sendall(b"reader")
+            assert await asyncio.wait_for(writer_called, timeout=5) == "writer"
+            await asyncio.wait_for(reader_called, timeout=5)
+            assert received == [("reader", "reader registration", b"reader")]
+            assert loop.remove_reader(fd) is False
+            assert loop.remove_writer(sock) is False
+
+            old_called = []
+            replacement_called = loop.create_future()
+
+            def old_callback():
+                old_called.append(True)
+
+            def replacement_callback():
+                data = sock.recv(1024)
+                loop.remove_reader(fd)
+                if not replacement_called.done():
+                    replacement_called.set_result(data)
+
+            loop.add_reader(fd, old_callback)
+            loop.add_reader(fd, replacement_callback)
+            sock.sendall(b"replace")
+            assert await asyncio.wait_for(replacement_called, timeout=5) == b"replace"
+            assert old_called == []
+
+            removed_called = []
+            loop.add_reader(fd, lambda: removed_called.append(True))
+            assert loop.remove_reader(fd) is True
+            sock.sendall(b"remove")
+            assert sock.recv(1024) == b"remove"
+            await asyncio.sleep(0)
+            assert removed_called == []
+        finally:
+            loop.remove_reader(fd)
+            loop.remove_writer(fd)
+            sock.close()
+
+    with tcp_server(handler) as (host, port):
+        run(selenium_nodesock, host, port)
+
+
+def test_asyncio_nodesock_closed_fd_reuse_ignores_stale_reader(selenium_nodesock):
+    """A queued readiness result cannot target a new socket reusing its fd."""
+
+    @run_in_pyodide
+    async def run(selenium):
+        import asyncio
+        import socket
+
+        loop = asyncio.get_event_loop()
+        original = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        fd = original.fileno()
+        called = []
+
+        loop.add_reader(fd, lambda: called.append(True))
+        original.close()
+
+        replacement = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            assert replacement.fileno() == fd
+            await asyncio.sleep(0)
+            await asyncio.sleep(0)
+            assert called == []
+            assert loop.remove_reader(fd) is False
+        finally:
+            replacement.close()
+
+    run(selenium_nodesock)
+
+
+def test_asyncio_nodesock_reader_eof_callback_can_close_socket(selenium_nodesock):
+    """EOF wakes a reader, and closing its fd prevents another registration."""
+
+    def handler(_conn, _addr):
+        pass
+
+    @run_in_pyodide
+    async def run(selenium, host, port):
+        import asyncio
+        import socket
+
+        loop = asyncio.get_event_loop()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((host, port))
+        fd = sock.fileno()
+        eof = loop.create_future()
+
+        def reader_callback():
+            assert sock.recv(1024) == b""
+            sock.close()
+            if not eof.done():
+                eof.set_result(None)
+
+        try:
+            loop.add_reader(fd, reader_callback)
+            await asyncio.wait_for(eof, timeout=5)
+            assert loop.remove_reader(fd) is False
+        finally:
+            loop.remove_reader(fd)
+            sock.close()
+
+    with tcp_server(handler) as (host, port):
+        run(selenium_nodesock, host, port)
+
+
+def test_asyncio_nodesock_reader_exception_rearms(selenium_nodesock):
+    """Reader callback errors use the loop handler and leave the reader active."""
+
+    def handler(conn, _addr):
+        assert conn.recv(1024) == b"first"
+        conn.sendall(b"bad")
+        assert conn.recv(1024) == b"next"
+        conn.sendall(b"good")
+
+    @run_in_pyodide
+    async def run(selenium, host, port):
+        import asyncio
+        import socket
+
+        loop = asyncio.get_event_loop()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((host, port))
+        errors = []
+        second_call = loop.create_future()
+        calls = 0
+
+        def exception_handler(_loop, context):
+            errors.append(context["exception"])
+
+        def reader_callback():
+            nonlocal calls
+            calls += 1
+            data = sock.recv(1024)
+            if calls == 1:
+                assert data == b"bad"
+                sock.sendall(b"next")
+                raise RuntimeError("reader callback failed")
+            loop.remove_reader(sock)
+            if not second_call.done():
+                second_call.set_result(data)
+
+        previous_handler = loop.get_exception_handler()
+        loop.set_exception_handler(exception_handler)
+        try:
+            loop.add_reader(sock, reader_callback)
+            sock.sendall(b"first")
+            assert await asyncio.wait_for(second_call, timeout=5) == b"good"
+            assert len(errors) == 1
+            assert isinstance(errors[0], RuntimeError)
+        finally:
+            loop.remove_reader(sock)
+            loop.set_exception_handler(previous_handler)
+            sock.close()
+
+    with tcp_server(handler) as (host, port):
+        run(selenium_nodesock, host, port)

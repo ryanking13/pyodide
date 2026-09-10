@@ -195,6 +195,25 @@ class PyodideTask(Task[T], PyodideFuture[T]):
         return res
 
 
+class _FDRegistration:
+    """Helper class for monitoring file descriptor readiness."""
+
+    def __init__(
+        self,
+        callback: Callable[..., None],
+        args: tuple[Any, ...],
+        context: contextvars.Context | None,
+        watcher: Any,  # NodeSockReadinessWatcher
+        is_current: Callable[[], bool],
+    ):
+        self.callback = callback
+        self.args = args
+        self.context = context
+        self.watcher = watcher
+        self.is_current = is_current
+        self.handle: asyncio.Handle | None = None
+
+
 class WebLoop(asyncio.AbstractEventLoop):
     """A custom event loop for use in Pyodide.
 
@@ -224,6 +243,8 @@ class WebLoop(asyncio.AbstractEventLoop):
         self._no_in_progress_handler = None
         self._keyboard_interrupt_handler = None
         self._system_exit_handler = None
+        self._readers: dict[int, _FDRegistration] = {}
+        self._writers: dict[int, _FDRegistration] = {}
         # Debug mode is currently no-op (actual asyncio debug features not implemented)
         self._debug = sys.flags.dev_mode or (
             not sys.flags.ignore_environment
@@ -766,32 +787,205 @@ class WebLoop(asyncio.AbstractEventLoop):
                     traceback.print_exc()
 
     #
-    # File descriptor readiness methods - Not available in browser environments
+    # File descriptor readiness methods - Not available in browser environments / NodeSockFS sockets only
     #
 
     def add_reader(self, fd, callback, *args):  # type: ignore[override]
-        """Register a reader callback for a file descriptor (unsupported on WebLoop)."""
-        raise NotImplementedError(
-            "add_reader() is not available in browser environments due to lack of POSIX file descriptors."
-        )
+        """Register a callback when a NodeSockFS socket becomes readable."""
+        self._add_fd_callback(fd, callback, args, self._readers, "watchRead")
 
     def add_writer(self, fd, callback, *args):  # type: ignore[override]
-        """Register a writer callback for a file descriptor (unsupported on WebLoop)."""
-        raise NotImplementedError(
-            "add_writer() is not available in browser environments due to lack of POSIX file descriptors."
-        )
+        """Register a callback when a NodeSockFS socket becomes writable."""
+        self._add_fd_callback(fd, callback, args, self._writers, "watchWrite")
 
     def remove_reader(self, fd):
-        """Remove a reader callback for a file descriptor (unsupported on WebLoop)."""
-        raise NotImplementedError(
-            "remove_reader() is not available in browser environments due to lack of POSIX file descriptors."
-        )
+        """Remove a NodeSockFS reader callback."""
+        self._get_node_sock_api()  # raise when NodeSockFS is not enabled
+        return self._remove_fd_callback(self._normalize_fd(fd), self._readers)
 
     def remove_writer(self, fd):
-        """Remove a writer callback for a file descriptor (unsupported on WebLoop)."""
-        raise NotImplementedError(
-            "remove_writer() is not available in browser environments due to lack of POSIX file descriptors."
+        """Remove a NodeSockFS writer callback."""
+        self._get_node_sock_api()  # raise when NodeSockFS is not enabled
+        return self._remove_fd_callback(
+            self._normalize_fd(fd),
+            self._writers,
         )
+
+    @staticmethod
+    def _normalize_fd(fd):
+        if not isinstance(fd, int):
+            try:
+                # fd is a file-like object
+                fd = fd.fileno()
+            except AttributeError:
+                raise ValueError(f"Invalid file object: {fd!r}") from None
+        if not isinstance(fd, int):
+            raise ValueError(f"Invalid file object: {fd!r}")
+        if fd < 0:
+            raise ValueError("file descriptor cannot be a negative integer")
+        return fd
+
+    @staticmethod
+    def _get_node_sock_api():
+        try:
+            from pyodide_js._api import _nodeSock
+        except (ImportError, AttributeError):
+            raise NotImplementedError(
+                "socket descriptors are not available in this runtime."
+            ) from None
+        return _nodeSock
+
+    def _add_fd_callback(
+        self,
+        fd: Any,
+        callback: Callable[..., None],
+        args: tuple[Any, ...],
+        registrations: dict[int, _FDRegistration],
+        watch_name: str,
+    ) -> None:
+        """
+        Add a callback for a file descriptor. Used by `add_reader` and `add_writer`.
+        """
+        if not callable(callback):
+            raise TypeError("A callable object is required")
+        fd = self._normalize_fd(fd)
+        node_sock = self._get_node_sock_api()
+        if not node_sock.isNodeSock(fd):
+            raise NotImplementedError("Only socket descriptors are supported.")
+
+        # Get the watcher for this file descriptor and register a callback
+        watcher = getattr(node_sock, watch_name)(fd)
+        registration = _FDRegistration(
+            callback, args, contextvars.copy_context(), watcher, watcher.isCurrent
+        )
+
+        # If there is a previous registration for this file descriptor, cancel it
+        # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.add_reader
+        old_registration = registrations.get(fd)
+        registrations[fd] = registration
+        if old_registration is not None:
+            self._cancel_fd_registration(old_registration)
+
+        self._attach_fd_watcher(fd, registration, registrations)
+
+    def _attach_fd_watcher(
+        self,
+        fd: int,
+        registration: _FDRegistration,
+        registrations: dict[int, _FDRegistration],
+    ) -> None:
+        watcher = registration.watcher
+        if watcher is None:
+            # should not happen but just in case if the registration is cancelled
+            return
+
+        def ready(ready):
+            self._fd_ready(fd, registration, registrations, watcher, ready)
+
+        watcher.promise.then(create_once_callable(ready, _may_syncify=True))
+
+    def _fd_ready(
+        self,
+        fd: int,
+        registration: _FDRegistration,
+        registrations: dict[int, _FDRegistration],
+        watcher: Any,
+        ready: bool,
+    ) -> None:
+        """
+        A callback function that is called when a file descriptor is ready.
+        """
+        if (
+            registrations.get(fd) is not registration
+            or registration.watcher is not watcher
+        ):
+            # remove_reader has removed the registration
+            return
+
+        # Clear the watcher to prevent further calls
+        registration.watcher = None
+
+        if not ready or not self._fd_registration_is_current(
+            fd, registration, registrations
+        ):
+            # socket was closed, or the registration was replaced
+            return
+        registration.handle = self.call_soon(
+            self._run_fd_callback,
+            fd,
+            registration,
+            registrations,
+            context=registration.context,
+        )
+
+    def _run_fd_callback(
+        self,
+        fd: int,
+        registration: _FDRegistration,
+        registrations: dict[int, _FDRegistration],
+    ) -> None:
+        if not self._fd_registration_is_current(fd, registration, registrations):
+            return
+
+        # clear the handle to prevent further calls
+        registration.handle = None
+
+        try:
+            registration.callback(*registration.args)
+        finally:
+            if self._fd_registration_is_current(fd, registration, registrations):
+                try:
+                    node_sock = self._get_node_sock_api()
+                    registration.watcher = (
+                        node_sock.watchRead(fd)
+                        if registrations is self._readers
+                        else node_sock.watchWrite(fd)
+                    )
+                except Exception:
+                    self._remove_fd_callback(fd, registrations)
+                else:
+                    self._attach_fd_watcher(fd, registration, registrations)
+
+    def _fd_registration_is_current(
+        self,
+        fd: int,
+        registration: _FDRegistration,
+        registrations: dict[int, _FDRegistration],
+    ) -> bool:
+        if registrations.get(fd) is not registration:
+            return False
+        try:
+            current = registration.is_current()
+        except Exception:
+            current = False
+        if not current:
+            self._remove_fd_callback(fd, registrations)
+        return current
+
+    @staticmethod
+    def _cancel_fd_registration(registration: _FDRegistration) -> None:
+        if registration.watcher is not None:
+            registration.watcher.cancel()
+            registration.watcher = None
+        if registration.handle is not None:
+            registration.handle.cancel()
+            registration.handle = None
+
+    def _remove_fd_callback(
+        self, fd: int, registrations: dict[int, _FDRegistration]
+    ) -> bool:
+        """
+        Remove a file descriptor callback from the event loop.
+        This function intentionally does not do any validation against the fd,
+        since this function can be called when fd becomes invalid.
+
+        The caller should validate the fd if necessary.
+        """
+        registration = registrations.pop(fd, None)
+        if registration is None:
+            return False
+        self._cancel_fd_registration(registration)
+        return True
 
     #
     # Pipes & zero-copy file transfer methods — not available in browser environments

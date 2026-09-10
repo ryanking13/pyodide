@@ -17,50 +17,31 @@ import {
 } from "./wintercg-sockets";
 import type { SocketOptions, ConnectFunc } from "./wintercg-sockets";
 import type { FSStream, FSNode } from "../types";
-import { sleep } from "../scheduler";
 import {
-  createResolvable,
-  type ResolvablePromise,
-} from "../common/resolveable";
+  monitorWriterClosed,
+  notifyDataAvailable,
+  notifyReaderReadiness,
+  notifyWriterReadiness,
+  poll,
+  pollAsync,
+  pollManyAsync,
+  startRead,
+  waitForData,
+  watchReadiness,
+} from "./nodesockfs-readiness";
+import type {
+  PollRequest,
+  ReadinessSocket,
+  ReadinessWatcher,
+} from "./nodesockfs-readiness";
 
-interface NodeSock {
+interface NodeSock extends ReadinessSocket {
   family: number;
   type: number;
   protocol: number;
-  error: number | null;
   /** The WinterCG Socket wrapping the underlying net.Socket / tls.TLSSocket */
   wcgSocket: WinterCGSocket | null;
-  /** ReadableStream reader for receiving data */
-  reader: ReadableStreamDefaultReader<Uint8Array> | null;
-  /** WritableStream writer for sending data */
-  writer: WritableStreamDefaultWriter<Uint8Array> | null;
-
-  /**
-   * Buffer for received data
-   * In nonblocking mode, this buffer is used to store data that has been received
-   * but not yet read by the application.
-   */
-  recvBuffer: Uint8Array[];
-  recvBufferBytes: number;
-  /**
-   * The stream has reached FIN.
-   * It does not mean the stream is closed, but it will not receive any more data.
-   */
-  eof: boolean;
-  /**
-   * Promise that resolves when data is available
-   * Used in blocking mode to suspend the WASM stack until data is available.
-   */
-  dataAvailable: ResolvablePromise | null;
-
-  /** A read() call is in flight on the current ReadableStream reader. */
-  readPending: boolean;
-  /** Resolves when the current read() call settles. */
-  readSettled: Promise<void> | null;
-
-  connected: boolean;
   connecting: boolean;
-  closed: boolean;
   stream: FSStream;
   daddr?: string;
   dport?: number;
@@ -110,6 +91,7 @@ export async function initializeNodeSockFS(
   const module = Module;
   const FS = module.FS;
   const API = module.API;
+  const nodeSockets = new WeakSet<NodeSock>();
 
   // following Emscripten's other FS implementations
   const DIR_MODE = cDefs.S_IFDIR | 0o777;
@@ -124,80 +106,6 @@ export async function initializeNodeSockFS(
   const POLLFD_EVENTS = 4;
   const POLLFD_REVENTS = 6;
   const POLLFD_SIZE = 8;
-
-  /**
-   * Start a single receive from the underlying ReadableStream.
-   * Reads are started by recv()/poll() demand.
-   */
-  function startRead(sock: NodeSock): void {
-    const reader = sock.reader;
-    // Not gated on sock.closed: a peer close leaves the reader intact with data
-    // and a FIN still to drain, so reads continue until the stream reports done
-    // (eof). A local close nulls sock.reader, which the `!reader` guard stops.
-    if (sock.readPending || sock.eof || !reader) {
-      return;
-    }
-    sock.readPending = true;
-
-    const readSettled = (async () => {
-      try {
-        let result: ReadableStreamReadResult<Uint8Array>;
-        try {
-          result = await reader.read();
-        } catch {
-          // The reader was released (e.g. startTls swapped it) or errored.
-          if (sock.reader === reader) {
-            sock.eof = true;
-            notifyDataAvailable(sock);
-          }
-          return;
-        }
-
-        // A reader swap can only happen across the await above.
-        if (sock.reader !== reader) return;
-        if (result.done) {
-          sock.eof = true;
-          notifyDataAvailable(sock);
-          return;
-        }
-
-        sock.recvBuffer.push(result.value);
-        sock.recvBufferBytes += result.value.length;
-        notifyDataAvailable(sock);
-      } finally {
-        sock.readPending = false;
-      }
-    })();
-    sock.readSettled = readSettled;
-    // Clean up the readSettled promise when it completes
-    readSettled.finally(() => {
-      if (sock.readSettled === readSettled) {
-        sock.readSettled = null;
-      }
-    });
-  }
-
-  function notifyDataAvailable(sock: NodeSock): void {
-    if (sock.dataAvailable) {
-      sock.dataAvailable.resolve();
-      sock.dataAvailable = null;
-    }
-  }
-
-  /**
-   * Block until data is available to read or the socket is closed.
-   */
-  function waitForData(sock: NodeSock): Promise<void> {
-    if (sock.recvBufferBytes > 0 || sock.eof) {
-      return Promise.resolve();
-    }
-    if (!sock.reader) {
-      return Promise.resolve();
-    }
-    sock.dataAvailable ??= createResolvable();
-    startRead(sock);
-    return sock.dataAvailable;
-  }
 
   function drainBuffer(sock: NodeSock, length: number): Uint8Array {
     if (sock.recvBufferBytes === 0) {
@@ -235,52 +143,9 @@ export async function initializeNodeSockFS(
   // Highly inspired by Emscripten's SOCKFS implementation
   // https://github.com/emscripten-core/emscripten/blob/main/src/lib/libsockfs.js
   const tcp_sock_ops = {
-    poll(sock: NodeSock): number {
-      let mask = 0;
+    poll,
 
-      // Readable: buffered data is ready, or EOF can be observed.
-      if (sock.recvBufferBytes > 0 || sock.eof) {
-        mask |= cDefs.POLLRDNORM | cDefs.POLLIN;
-      }
-
-      // Writable: connected and writer is available
-      if (sock.connected && sock.writer) {
-        mask |= cDefs.POLLOUT;
-      }
-
-      // Hangup: the underlying transport has closed
-      if (sock.closed) {
-        mask |= cDefs.POLLHUP;
-      }
-
-      return mask;
-    },
-
-    async pollAsync(
-      sock: NodeSock,
-      events: number,
-      timeout: number,
-    ): Promise<number> {
-      // Get the events that are currently ready
-      // https://github.com/emscripten-core/emscripten/blob/61533b1fbd7fefc1792220aa0499db1724471e74/src/lib/libsyscall.js#L599
-      const getRequestedEvents = (): number =>
-        tcp_sock_ops.poll(sock) & (events | cDefs.POLLERR | cDefs.POLLHUP);
-
-      const ready = getRequestedEvents();
-      // timeout == 0: No wait, return immediately
-      if (ready || timeout === 0) return ready;
-
-      // timeout < 0: Infinite wait
-      if (timeout < 0) {
-        // wait for data to become available
-        await waitForData(sock);
-      } else {
-        // timeout > 0: Wait for the specified time
-        // Race between waiting for data and the timeout
-        await Promise.race([waitForData(sock), sleep(timeout)]);
-      }
-      return getRequestedEvents();
-    },
+    pollAsync,
 
     /**
      * For now only FIONREAD is supported.
@@ -317,6 +182,8 @@ export async function initializeNodeSockFS(
       // Signal any pending read to stop before touching the reader.
       sock.closed = true;
       notifyDataAvailable(sock);
+      notifyReaderReadiness(sock);
+      notifyWriterReadiness(sock);
 
       if (sock.wcgSocket) {
         sock.reader = null;
@@ -367,41 +234,62 @@ export async function initializeNodeSockFS(
           wcgSocket.readable.getReader() as ReadableStreamDefaultReader<Uint8Array>;
         sock.writer =
           wcgSocket.writable.getWriter() as WritableStreamDefaultWriter<Uint8Array>;
+        monitorWriterClosed(sock);
+        if (sock.readWaiters.size) {
+          startRead(sock);
+        }
+        notifyWriterReadiness(sock);
 
         // Track when the underlying transport closes.
         // Swallow any errors while closing sockets.
         wcgSocket.closed.then(
           () => {
             sock.closed = true;
+            notifyReaderReadiness(sock);
+            notifyWriterReadiness(sock);
           },
           () => {
             sock.closed = true;
+            notifyReaderReadiness(sock);
+            notifyWriterReadiness(sock);
           },
         );
         return 0;
       } catch (err: unknown) {
-        sock.error = cDefs.ECONNREFUSED;
+        sock.readError = cDefs.ECONNREFUSED;
         sock.connecting = false;
-        return -sock.error;
+        notifyReaderReadiness(sock);
+        notifyWriterReadiness(sock);
+        return -sock.readError;
       }
     },
 
     // Node.js support synchronous sendmsg while the wintercg sockets API is
     // asynchronous.
     async sendmsgAsync(sock: NodeSock, data: Uint8Array): Promise<number> {
-      if (!sock.writer) {
+      if (sock.writeError !== null) {
+        return -sock.writeError;
+      }
+      const writer = sock.writer;
+      if (!writer) {
         return -cDefs.ENOTCONN;
       }
 
       try {
-        await sock.writer.write(data);
+        await writer.write(data);
+        if (sock.writer === writer) {
+          notifyWriterReadiness(sock);
+        }
         return data.length;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("EPIPE") || msg.includes("ECONNRESET")) {
-          return -cDefs.EPIPE;
+          sock.writeError = cDefs.EPIPE;
+        } else {
+          sock.writeError = cDefs.EIO;
         }
-        return -cDefs.EIO;
+        notifyWriterReadiness(sock);
+        return -sock.writeError;
       }
     },
 
@@ -412,6 +300,7 @@ export async function initializeNodeSockFS(
       const tryDrain = (): Uint8Array | number | null => {
         const data = drainBuffer(sock, length);
         if (data.length > 0) return data;
+        if (sock.readError !== null) return -sock.readError;
         if (sock.eof) return 0;
         return null;
       };
@@ -426,7 +315,12 @@ export async function initializeNodeSockFS(
         return tryDrain() ?? -cDefs.EAGAIN;
       }
 
-      while (sock.recvBufferBytes === 0 && !sock.eof && sock.reader) {
+      while (
+        sock.recvBufferBytes === 0 &&
+        sock.readError === null &&
+        !sock.eof &&
+        sock.reader
+      ) {
         await waitForData(sock);
       }
       return tryDrain() ?? -cDefs.EAGAIN;
@@ -444,12 +338,17 @@ export async function initializeNodeSockFS(
           sock.recvBufferBytes = 0;
           sock.eof = true;
           notifyDataAvailable(sock);
+          notifyReaderReadiness(sock);
         }
       }
 
       if (how === SHUT_WR || how === SHUT_RDWR) {
         if (sock.writer) {
+          sock.writeError = cDefs.EPIPE;
           sock.writer = null;
+          sock.writerReadyMonitor = null;
+          sock.writerClosedMonitor = null;
+          notifyWriterReadiness(sock);
         }
       }
 
@@ -458,6 +357,8 @@ export async function initializeNodeSockFS(
         sock.wcgSocket = null;
         sock.connected = false;
         sock.closed = true;
+        notifyReaderReadiness(sock);
+        notifyWriterReadiness(sock);
       }
 
       return 0;
@@ -484,6 +385,8 @@ export async function initializeNodeSockFS(
       if (sock.writer) {
         sock.writer.releaseLock();
         sock.writer = null;
+        sock.writerReadyMonitor = null;
+        sock.writerClosedMonitor = null;
       }
 
       const tlsSocket = sock.wcgSocket.startTls();
@@ -493,18 +396,26 @@ export async function initializeNodeSockFS(
         tlsSocket.readable.getReader() as ReadableStreamDefaultReader<Uint8Array>;
       sock.writer =
         tlsSocket.writable.getWriter() as WritableStreamDefaultWriter<Uint8Array>;
+      monitorWriterClosed(sock);
       sock.recvBuffer = [];
       sock.recvBufferBytes = 0;
       sock.eof = false;
       tlsSocket.closed.then(
         () => {
           sock.closed = true;
+          notifyReaderReadiness(sock);
+          notifyWriterReadiness(sock);
         },
         () => {
           sock.closed = true;
+          notifyReaderReadiness(sock);
+          notifyWriterReadiness(sock);
         },
       );
-      startRead(sock);
+      if (sock.readWaiters.size) {
+        startRead(sock);
+      }
+      notifyWriterReadiness(sock);
       return 0;
     },
 
@@ -595,7 +506,9 @@ export async function initializeNodeSockFS(
         family,
         type,
         protocol,
-        error: null,
+        // Keep write failures separate so they don't poison subsequent reads.
+        readError: null,
+        writeError: null,
         wcgSocket: null,
         reader: null,
         writer: null,
@@ -603,6 +516,11 @@ export async function initializeNodeSockFS(
         recvBufferBytes: 0,
         eof: false,
         dataAvailable: null,
+        readWaiters: new Set(),
+        writeWaiters: new Set(),
+        pollWaiters: new Set(),
+        writerReadyMonitor: null,
+        writerClosedMonitor: null,
         readPending: false,
         readSettled: null,
         connected: false,
@@ -610,6 +528,7 @@ export async function initializeNodeSockFS(
         closed: false,
         sock_ops: tcp_sock_ops,
       };
+      nodeSockets.add(sock);
 
       // create the filesystem node to store the socket structure
       const name = `socket[${socketCounter++}]`;
@@ -641,7 +560,11 @@ export async function initializeNodeSockFS(
       if (!stream || !FS.isSocket(stream.node.mode)) {
         return null;
       }
-      return stream.node.sock as NodeSock;
+      const sock = stream.node.sock as NodeSock;
+      if (!nodeSockets.has(sock)) {
+        return null;
+      }
+      return sock;
     },
 
     /**
@@ -656,32 +579,53 @@ export async function initializeNodeSockFS(
       timeout: number,
     ): Promise<number> {
       let count = 0;
-      const waits: Promise<void>[] = [];
+      const requests: PollRequest[] = [];
+      const pollfds: {
+        fd: number;
+        sock: NodeSock;
+        setRevents: (flags: number) => boolean;
+      }[] = [];
+      let ready = false;
       for (let i = 0; i < nfds; i++) {
         const pollfd = fds + POLLFD_SIZE * i;
         const fd = module.HEAP32[(pollfd + POLLFD_FD) >> 2];
         const events = module.HEAP16[(pollfd + POLLFD_EVENTS) >> 1];
-        const setRevents = (flags: number): void => {
-          flags &= events | cDefs.POLLERR | cDefs.POLLHUP;
+        const setRevents = (flags: number): boolean => {
+          flags &= events | cDefs.POLLERR | cDefs.POLLHUP | cDefs.POLLNVAL;
           module.HEAP16[(pollfd + POLLFD_REVENTS) >> 1] = flags;
           if (flags) {
             count++;
           }
+          return flags !== 0;
         };
+
+        if (fd < 0) {
+          setRevents(0);
+          continue;
+        }
 
         const sock = NodeSockFS.getSocket(fd);
         if (!sock) {
           // stream not found
-          setRevents(cDefs.POLLNVAL);
-        } else if (timeout === 0) {
-          setRevents(sock.sock_ops.poll(sock));
+          ready = setRevents(cDefs.POLLNVAL) || ready;
         } else {
-          waits.push(
-            sock.sock_ops.pollAsync(sock, events, timeout).then(setRevents),
-          );
+          requests.push({ sock, events });
+          pollfds.push({ fd, sock, setRevents });
+          ready = setRevents(sock.sock_ops.poll(sock)) || ready;
         }
       }
-      await Promise.all(waits);
+      if (ready || timeout === 0) {
+        return count;
+      }
+      await pollManyAsync(requests, timeout);
+      count = 0;
+      for (const { fd, sock, setRevents } of pollfds) {
+        if (NodeSockFS.getSocket(fd) === sock) {
+          setRevents(sock.sock_ops.poll(sock));
+        } else {
+          setRevents(cDefs.POLLNVAL);
+        }
+      }
       return count;
     },
   };
@@ -704,8 +648,16 @@ export async function initializeNodeSockFS(
       if (!sock) {
         throw new FS.ErrnoError(cDefs.EBADF);
       }
-      while (sock.recvBufferBytes === 0 && !sock.eof && sock.reader) {
+      while (
+        sock.recvBufferBytes === 0 &&
+        sock.readError === null &&
+        !sock.eof &&
+        sock.reader
+      ) {
         await waitForData(sock);
+      }
+      if (sock.recvBufferBytes === 0 && sock.readError !== null) {
+        throw new FS.ErrnoError(sock.readError);
       }
       return drainBuffer(sock, nbytes);
     },
@@ -735,6 +687,34 @@ export async function initializeNodeSockFS(
         return -cDefs.EBADF;
       }
       return await tcp_sock_ops.startTls(sock);
+    },
+
+    isNodeSock(fd: number): boolean {
+      return NodeSockFS.getSocket(fd) !== null;
+    },
+
+    watchRead(fd: number): ReadinessWatcher {
+      const sock = NodeSockFS.getSocket(fd);
+      if (!sock) {
+        throw new FS.ErrnoError(cDefs.EBADF);
+      }
+      return watchReadiness(
+        sock,
+        true,
+        () => NodeSockFS.getSocket(fd) === sock,
+      );
+    },
+
+    watchWrite(fd: number): ReadinessWatcher {
+      const sock = NodeSockFS.getSocket(fd);
+      if (!sock) {
+        throw new FS.ErrnoError(cDefs.EBADF);
+      }
+      return watchReadiness(
+        sock,
+        false,
+        () => NodeSockFS.getSocket(fd) === sock,
+      );
     },
   };
 
