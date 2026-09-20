@@ -28,12 +28,10 @@ function windowsPathToUnix(path) {
  * Since the working directory may differ from the directory that this script is executed from (== python is executed from),
  * we need to mount the other drives as well.
  */
-function windowsDriveMounts(paths) {
+function windowsDriveMounts() {
+  const candidatePaths = getWindowsPathCandidates();
   const drives = new Set();
-  for (const path of paths) {
-    if (typeof path !== "string") {
-      continue;
-    }
+  for (const path of candidatePaths) {
     const match = /^([A-Za-z]):[\\/]/.exec(path);
     if (match) {
       drives.add(match[1].toUpperCase());
@@ -69,9 +67,9 @@ function isAccessibleDriveRoot(root) {
  * names it is possible this could break. The most surprising one here is tmp, I
  * am not sure why but if we link tmp then the process silently fails.
  */
-function dirsToMount(paths) {
+function dirsToMount() {
   if (process.platform === "win32") {
-    return windowsDriveMounts(paths);
+    return windowsDriveMounts();
   }
 
   const filteredDirs = new Set([
@@ -110,9 +108,7 @@ const thisProgramFlag = "--this-program=";
 const thisProgramIndex = process.argv.findIndex((x) =>
   x.startsWith(thisProgramFlag),
 );
-const args = process.argv
-  .slice(thisProgramIndex + 1)
-  .map((path) => windowsPathToUnix(path));
+const args = process.argv.slice(thisProgramIndex + 1).map(windowsPathToUnix);
 const _sysExecutable = process.argv[thisProgramIndex].slice(
   thisProgramFlag.length,
 );
@@ -125,7 +121,7 @@ const _sysExecutable = process.argv[thisProgramIndex].slice(
  * but that introduces additional overhead. For now, we'll just use the paths
  * that are passed to the script.
  */
-function pathsToMount() {
+function getWindowsPathCandidates() {
   const pythonPath = process.env.PYTHONPATH?.split(";") ?? [];
   return [
     process.cwd(),
@@ -137,7 +133,7 @@ function pathsToMount() {
 }
 
 function fsInit(FS) {
-  const mounts = dirsToMount(pathsToMount());
+  const mounts = dirsToMount();
   for (const mount of mounts) {
     FS.mkdirTree(mount.mountpoint);
     FS.mount(FS.filesystems.NODEFS, { root: mount.root }, mount.mountpoint);
