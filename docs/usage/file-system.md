@@ -122,3 +122,24 @@ or
 ```js
 pyodide.FS.syncfs(false, callback_func);
 ```
+
+To synchronize changes automatically, pass `true` as the third argument. This
+mode uses JSPI to suspend Python while each file system mutation is persisted:
+
+```pyodide
+await pyodide.mountNativeFS("/mount_dir", dirHandle, true);
+
+await pyodide.runPythonAsync(`
+  with open('/mount_dir/new_file.txt', 'w') as f:
+    f.write("hello")
+`);
+
+// new_file.txt now exists in the native file system
+```
+
+Automatic synchronization requires JSPI and a promising entry point into
+WebAssembly. Use {js:func}`pyodide.runPythonAsync` rather than
+{js:func}`pyodide.runPython` when Python accesses this mount; mutations from a
+non-promising entry point fail with an `OSError`. Direct operations through the
+JavaScript `pyodide.FS` API do not trigger synchronization themselves, but may
+be included in a later automatic sync.

@@ -50,17 +50,34 @@ export function initializeNativeFS(module: PyodideModule) {
       // reuse all of the core MEMFS functionality
       return MEMFS.mount.apply(null, arguments);
     },
-    syncfs: async (mount: any, populate: Boolean, callback: Function) => {
-      try {
-        const local = nativeFSAsync.getLocalSet(mount);
-        const remote = await nativeFSAsync.getRemoteSet(mount);
-        const src = populate ? remote : local;
-        const dst = populate ? local : remote;
-        await nativeFSAsync.reconcile(mount, src, dst);
-        callback(null);
-      } catch (e) {
-        callback(e);
-      }
+    syncfs: (mount: any, populate: boolean, callback: Function) => {
+      const previousSync = mount.opts.syncPromise ?? Promise.resolve();
+      const currentSync = previousSync
+        .catch(() => undefined)
+        .then(async () => {
+          const autoSyncPaths: Set<string> =
+            mount.opts.autoSyncPaths ?? new Set();
+          mount.opts.autoSyncPaths = new Set();
+          try {
+            const local = nativeFSAsync.getLocalSet(mount);
+            const remote = await nativeFSAsync.getRemoteSet(mount);
+            const src = populate ? remote : local;
+            const dst = populate ? local : remote;
+            await nativeFSAsync.reconcile(
+              mount,
+              src,
+              dst,
+              populate ? new Set() : autoSyncPaths,
+            );
+          } catch (error) {
+            for (const path of autoSyncPaths) {
+              mount.opts.autoSyncPaths.add(path);
+            }
+            throw error;
+          }
+        });
+      mount.opts.syncPromise = currentSync;
+      currentSync.then(() => callback(null), callback);
     },
     // Returns file set of emscripten's filesystem at the mountpoint.
     getLocalSet: (mount: any) => {
@@ -196,7 +213,12 @@ export function initializeNativeFS(module: PyodideModule) {
       await parentDirHandle.removeEntry(PATH.basename(path));
       handles.delete(path);
     },
-    reconcile: async (mount: any, src: any, dst: any) => {
+    reconcile: async (
+      mount: any,
+      src: any,
+      dst: any,
+      autoSyncPaths: Set<string>,
+    ) => {
       let total = 0;
 
       const create: Array<string> = [];
@@ -206,7 +228,8 @@ export function initializeNativeFS(module: PyodideModule) {
         if (
           !e2 ||
           (FS.isFile(e.mode) &&
-            e["timestamp"].getTime() > e2["timestamp"].getTime())
+            (autoSyncPaths.has(key) ||
+              e["timestamp"].getTime() > e2["timestamp"].getTime()))
         ) {
           create.push(key);
           total++;

@@ -332,6 +332,8 @@ export interface PythonModule extends EmscriptenModule {
 /** @hidden */
 export interface PyodideModule extends PythonModule {
   API: API;
+  jspiSupported: boolean;
+  _nativefs_autosync_enabled: number;
   _compat_to_string_repr: number;
   _compat_null_to_none: number;
   _compat_dict_to_literalmap: number;

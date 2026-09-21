@@ -186,7 +186,16 @@ export MAIN_MODULE_LDFLAGS_COMMON= $(LDFLAGS_BASE) \
 	-lzstd \
 	-lidbfs.js \
 	-lnodefs.js \
-	-lproxyfs.js
+	-lproxyfs.js \
+	-Wl,--wrap=__wasi_fd_close \
+	-Wl,--wrap=__wasi_fd_sync \
+	-Wl,--wrap=__syscall_fdatasync \
+	-Wl,--wrap=__syscall_truncate64 \
+	-Wl,--wrap=__syscall_ftruncate64 \
+	-Wl,--wrap=__syscall_mkdirat \
+	-Wl,--wrap=__syscall_rmdir \
+	-Wl,--wrap=__syscall_unlinkat \
+	-Wl,--wrap=__syscall_renameat
 
 EXPORTED_RUNTIME_METHODS=wasmTable,ERRNO_CODES,DNS
 

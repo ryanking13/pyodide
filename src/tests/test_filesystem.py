@@ -6,7 +6,7 @@ for a basic nodejs-based test, see src/js/test/filesystem.test.js
 import pytest
 from pytest_pyodide import run_in_pyodide
 
-from conftest import only_chrome, only_node
+from conftest import only_chrome, only_node, requires_jspi
 
 
 @pytest.mark.skip_refcount_check
@@ -133,6 +133,9 @@ def test_nativefs_dir(request, selenium_standalone_refresh):
         await writable.write("hello_read");
         await writable.close();
         fs = await pyodide.mountNativeFS("/mnt/nativefs", dirHandleMount);
+        assert(() => pyodide._module.HEAP8[
+          pyodide._module._nativefs_autosync_enabled
+        ] === 0);
         """
     )
 
@@ -310,6 +313,216 @@ def test_nativefs_errors(selenium):
           () =>
             r2.reason.message === "path '/mnt4/nativefs' is already a file system mount point",
         );
+        """
+    )
+
+
+@pytest.mark.requires_dynamic_linking
+@only_chrome
+@requires_jspi
+def test_nativefs_jspi_sync(request, selenium_standalone_refresh):
+    if request.config.option.runner == "playwright":
+        pytest.xfail("Playwright doesn't support file system access APIs")
+
+    selenium = selenium_standalone_refresh
+    selenium.run_js(
+        """
+        root = await navigator.storage.getDirectory();
+        await root.removeEntry("nativefs-jspi", { recursive: true }).catch(() => {});
+        dirHandleMount = await root.getDirectoryHandle(
+          "nativefs-jspi",
+          { create: true },
+        );
+        assert(() => pyodide._module.HEAP8[
+          pyodide._module._nativefs_autosync_enabled
+        ] === 0);
+        await pyodide.mountNativeFS("/mnt/nativefs-jspi", dirHandleMount, true);
+        assert(() => pyodide._module.HEAP8[
+          pyodide._module._nativefs_autosync_enabled
+        ] === 1);
+
+        assertThrows(
+          () => pyodide.runPython(`
+            from pathlib import Path
+            Path("/mnt/nativefs-jspi/not-created").mkdir()
+          `),
+          "PythonError",
+          "I/O error",
+        );
+        """
+    )
+
+    def read_remote_file(name):
+        return selenium.run_js(
+            f"""
+            const handle = await dirHandleMount.getFileHandle({name!r});
+            return await (await handle.getFile()).text();
+            """
+        )
+
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+          from pathlib import Path
+          Path("/mnt/nativefs-jspi/file.txt").write_text("contents")
+        `);
+        """
+    )
+    assert read_remote_file("file.txt") == "contents"
+
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+          from pathlib import Path
+          Path("/mnt/nativefs-jspi/directory").mkdir()
+          Path("/mnt/nativefs-jspi/old.txt").write_text("renamed")
+        `);
+        await dirHandleMount.getDirectoryHandle("directory");
+        await pyodide.runPythonAsync(`
+          import os
+          os.rename(
+            "/mnt/nativefs-jspi/old.txt",
+            "/mnt/nativefs-jspi/new.txt",
+          )
+        `);
+        """
+    )
+    assert read_remote_file("new.txt") == "renamed"
+    old_exists = selenium.run_js(
+        """
+        return await dirHandleMount.getFileHandle("old.txt")
+          .then(() => true, () => false);
+        """
+    )
+    assert not old_exists
+
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+          import os
+          from pathlib import Path
+          source = Path("/mnt/nativefs-jspi/overwrite-source.txt")
+          source.write_text("replacement")
+          Path("/mnt/nativefs-jspi/overwrite-destination.txt").write_text("stale")
+          os.utime(source, ns=(1_000_000, 1_000_000))
+          os.rename(
+            source,
+            "/mnt/nativefs-jspi/overwrite-destination.txt",
+          )
+        `);
+        """
+    )
+    assert read_remote_file("overwrite-destination.txt") == "replacement"
+
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+          from pathlib import Path
+          Path("/mnt/nativefs-jspi/failed-rename.txt").write_text("local")
+        `);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        const failedRenameHandle = await dirHandleMount.getFileHandle(
+          "failed-rename.txt",
+        );
+        const failedRenameWritable = await failedRenameHandle.createWritable();
+        await failedRenameWritable.write("remote-newer");
+        await failedRenameWritable.close();
+        await pyodide.runPythonAsync(`
+          import os
+          from pathlib import Path
+          try:
+            os.rename(
+              "/mnt/nativefs-jspi/failed-rename.txt",
+              "/mnt/nativefs-jspi/missing/failed-rename.txt",
+            )
+          except OSError:
+            pass
+          Path("/mnt/nativefs-jspi/failed-rename-trigger").mkdir()
+        `);
+        """
+    )
+    assert read_remote_file("failed-rename.txt") == "remote-newer"
+
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+          import os
+          os.truncate("/mnt/nativefs-jspi/file.txt", 4)
+        `);
+        """
+    )
+    assert read_remote_file("file.txt") == "cont"
+
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+          import os
+          nativefs_fd = os.open("/mnt/nativefs-jspi/file.txt", os.O_RDWR)
+          os.ftruncate(nativefs_fd, 2)
+        `);
+        """
+    )
+    assert read_remote_file("file.txt") == "co"
+    selenium.run_js('await pyodide.runPythonAsync("os.close(nativefs_fd)");')
+
+    for sync_call in ["fsync", "fdatasync"]:
+        selenium.run_js(
+            f"""
+            await pyodide.runPythonAsync(`
+              import os
+              nativefs_fd = os.open(
+                "/mnt/nativefs-jspi/{sync_call}.txt",
+                os.O_CREAT | os.O_WRONLY,
+              )
+              os.write(nativefs_fd, b"{sync_call}")
+              os.{sync_call}(nativefs_fd)
+            `);
+            """
+        )
+        assert read_remote_file(f"{sync_call}.txt") == sync_call
+        selenium.run_js('await pyodide.runPythonAsync("os.close(nativefs_fd)");')
+
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+          import os
+          os.unlink("/mnt/nativefs-jspi/new.txt")
+          os.rmdir("/mnt/nativefs-jspi/directory")
+        `);
+        """
+    )
+    entries = selenium.run_js(
+        """
+        const result = [];
+        for await (const key of dirHandleMount.keys()) result.push(key);
+        return result;
+        """
+    )
+    assert "new.txt" not in entries
+    assert "directory" not in entries
+
+
+@only_chrome
+def test_nativefs_jspi_requires_jspi(selenium):
+    selenium.run_js(
+        """
+        const root = await navigator.storage.getDirectory();
+        const handle = await root.getDirectoryHandle(
+          "nativefs-jspi-unsupported",
+          { create: true },
+        );
+        const original = pyodide._module.jspiSupported;
+        pyodide._module.jspiSupported = false;
+        try {
+          await assertThrowsAsync(
+            () => pyodide.mountNativeFS("/mnt/nativefs-jspi-unsupported", handle, true),
+            "Error",
+            "Synchronous native file system mounts require JSPI support",
+          );
+        } finally {
+          pyodide._module.jspiSupported = original;
+        }
+        assert(() => !pyodide.FS.analyzePath("/mnt/nativefs-jspi-unsupported").exists);
         """
     )
 

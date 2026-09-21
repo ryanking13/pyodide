@@ -565,25 +565,35 @@ export class PyodideAPI_ {
    * @param fileSystemHandle A handle returned by
    * :js:func:`navigator.storage.getDirectory() <getDirectory>` or
    * :js:func:`window.showDirectoryPicker() <showDirectoryPicker>`.
+   * @param sync Automatically synchronize file system mutations using JSPI.
+   * Python code that accesses a synchronous mount must be invoked through a
+   * promising entry point such as :js:func:`runPythonAsync`.
    */
   static async mountNativeFS(
     path: string,
     fileSystemHandle: FileSystemDirectoryHandle,
-    // TODO: support sync file system
-    // sync: boolean = false
+    sync: boolean = false,
   ): Promise<NativeFS> {
     if (fileSystemHandle.constructor.name !== "FileSystemDirectoryHandle") {
       throw new TypeError(
         `Expected argument 'fileSystemHandle' to be a FileSystemDirectoryHandle`,
       );
     }
+    if (sync && !Module.jspiSupported) {
+      throw new Error(
+        "Synchronous native file system mounts require JSPI support",
+      );
+    }
     ensureMountPathExists(path);
 
     Module.FS.mount(
       Module.FS.filesystems.NATIVEFS_ASYNC,
-      { fileSystemHandle },
+      { fileSystemHandle, autoSync: sync },
       path,
     );
+    if (sync) {
+      Module.HEAP8[Module._nativefs_autosync_enabled] = 1;
+    }
 
     // sync native ==> browser
     await syncRemoteToLocal(Module);
