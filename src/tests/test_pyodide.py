@@ -1683,10 +1683,35 @@ def test_windows_to_linux_path_finder_edge_cases(selenium):
 
 
 @run_in_pyodide
+def test_windows_to_linux_path_finder_registration(selenium_standalone):
+    import sys
+
+    from _pyodide._importhook import (
+        WindowsToLinuxPathFinder,
+        register_windows_finder,
+    )
+
+    def finder_count():
+        return sum(importer is WindowsToLinuxPathFinder for importer in sys.meta_path)
+
+    # Reconciliation is idempotent and removes finders inherited from a snapshot.
+    sys.meta_path.extend([WindowsToLinuxPathFinder, WindowsToLinuxPathFinder])
+    register_windows_finder(False)
+    assert finder_count() == 0
+    register_windows_finder(True)
+    register_windows_finder(True)
+    assert finder_count() == 1
+
+
+@run_in_pyodide
 def test_windows_to_linux_path_import(selenium_standalone):
     import sys
     from importlib import invalidate_caches
     from pathlib import Path
+
+    from _pyodide._importhook import register_windows_finder
+
+    register_windows_finder(True)
 
     tmp_dir = Path("/c/tmp/my/temporary/directory/for/testing/import")
     tmp_dir.mkdir(parents=True, exist_ok=True)
