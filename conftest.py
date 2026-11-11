@@ -119,6 +119,15 @@ def pytest_addoption(parser):
             "CAUTION: this will skip tests even if tests are modified"
         ),
     )
+    group.addoption(
+        "--select-from",
+        metavar="FILE",
+        help=(
+            "Only run the tests listed in FILE, one per line. A line can be a "
+            "test file path, a full test id, or a test id without the file "
+            "path. Used to split the tests between CI containers."
+        ),
+    )
 
 
 def maybe_skip_test(item, delayed=False):
@@ -179,6 +188,28 @@ def pytest_configure(config):
     pytest.pyodide_dist_dir = config.getoption("--dist-dir")  # type:ignore[attr-defined]
 
 
+def select_listed_tests(config, items):
+    """Keep only the tests listed in the --select-from file."""
+    select_from = config.getoption("--select-from")
+    if not select_from:
+        return
+
+    lines = pathlib.Path(select_from).read_text().splitlines()
+    selected = {line.strip() for line in lines if line.strip()}
+    keep = []
+    deselected = []
+    for item in items:
+        path, _, name = item.nodeid.partition("::")
+        if path in selected or name in selected or item.nodeid in selected:
+            keep.append(item)
+        else:
+            deselected.append(item)
+
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = keep
+
+
 def pytest_collection_modifyitems(config, items):
     """Called after collect is completed.
     Parameters
@@ -186,6 +217,8 @@ def pytest_collection_modifyitems(config, items):
     config : pytest config
     items : list of collected items
     """
+    select_listed_tests(config, items)
+
     prev_test_result = {}
     if config.getoption("--skip-passed"):
         cache = config.cache

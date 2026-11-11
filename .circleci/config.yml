@@ -358,8 +358,21 @@ jobs:
         description: Workspace directory to use as dist/ for the tests.
         type: string
         default: "dist"
+      parallelism:
+        description: Number of containers to split the tests between.
+        type: integer
+        default: 1
+      split-by:
+        description: >-
+          How to split the tests between containers: "file" keeps each test
+          file in one container (so module-scoped browsers are started once),
+          "test" splits individual tests (for jobs with only a few test files).
+        type: enum
+        enum: [file, test]
+        default: file
     <<: *defaults
     resource_class: medium+
+    parallelism: << parameters.parallelism >>
     steps:
       - attach_workspace:
           at: .
@@ -387,13 +400,42 @@ jobs:
             fi
             echo "pytest cache dir: $CACHE_DIR"
             source pyodide_env.sh
+
+            SELECT_ARGS=()
+            if [ "${CIRCLE_NODE_TOTAL:-1}" -gt 1 ]; then
+              # Split the tests between containers, using the timings from
+              # previous runs (stored by store_test_results).
+              python -m pytest --collect-only -q \
+                << parameters.test-params >> \
+                -o cache_dir=$CACHE_DIR \
+                | grep "::" > all-tests.txt
+              if [ "<< parameters.split-by >>" = "file" ]; then
+                sed 's/::.*//' all-tests.txt | sort -u \
+                  | circleci tests split --split-by=timings --timings-type=filename \
+                  > selected-tests.txt
+              else
+                sed 's/^[^:]*:://' all-tests.txt \
+                  | circleci tests split --split-by=timings --timings-type=testname \
+                  > selected-tests.txt
+              fi
+              echo "Container $CIRCLE_NODE_INDEX/$CIRCLE_NODE_TOTAL runs $(wc -l < selected-tests.txt) of $(wc -l < all-tests.txt) entries"
+              if [ ! -s selected-tests.txt ]; then
+                echo "No tests for this container"
+                exit 0
+              fi
+              SELECT_ARGS=(--select-from selected-tests.txt)
+            fi
+
+            # xunit1 records the test file, which the timing-based split uses.
             tools/pytest_wrapper.py \
               --junitxml=test-results/junit.xml \
+              -o junit_family=xunit1 \
               --verbose \
               --durations 50 \
               --benchmark-json=benchmark-time.json \
               --benchmark-columns=mean,min,max,stddev \
               << parameters.test-params >> \
+              "${SELECT_ARGS[@]}" \
               -o cache_dir=$CACHE_DIR
       - store_test_results:
           path: test-results
@@ -713,6 +755,7 @@ workflows:
       - test-main:
           name: test-core-chrome-nodylink
           test-params: --runtime=chrome-no-host -m 'not requires_dynamic_linking' -k "not webworker" src packages/micropip  packages/test-fpcast packages/test-sharedlib-py/ packages/test-cpp-exceptions/ packages/test-buffer/
+          parallelism: 2
           requires:
             - build-core-nodylink
           filters:
@@ -722,6 +765,7 @@ workflows:
       - test-main:
           name: test-core-firefox-nodylink
           test-params: --runtime=firefox-no-host -m 'not requires_dynamic_linking' -k "not webworker" src packages/micropip packages/test-fpcast packages/test-sharedlib-py/ packages/test-cpp-exceptions/ packages/test-buffer/
+          parallelism: 2
           requires:
             - build-core-nodylink
           filters:
@@ -731,6 +775,7 @@ workflows:
       - test-main:
           name: test-core-node-nodylink
           test-params: --runtime=node-no-host -m 'not requires_dynamic_linking' -k "not cmdline_runner" src packages/micropip packages/test-fpcast packages/test-sharedlib-py/ packages/test-cpp-exceptions/ packages/test-buffer/
+          parallelism: 2
           requires:
             - build-core-nodylink
           filters:
@@ -740,6 +785,7 @@ workflows:
       - test-main:
           name: test-core-chrome
           test-params: --runtime=chrome-no-host -k "not webworker" src packages/micropip  packages/test-fpcast packages/test-sharedlib-py/ packages/test-cpp-exceptions/ packages/test-buffer/
+          parallelism: 3
           requires:
             - build-core
           filters:
@@ -749,6 +795,7 @@ workflows:
       - test-main:
           name: test-core-firefox
           test-params: --runtime=firefox-no-host -k "not webworker" src packages/micropip packages/test-fpcast packages/test-sharedlib-py/ packages/test-cpp-exceptions/ packages/test-buffer/
+          parallelism: 3
           requires:
             - build-core
           filters:
@@ -758,6 +805,7 @@ workflows:
       - test-main:
           name: test-core-node
           test-params: --runtime=node-no-host src packages/micropip packages/test-fpcast packages/test-sharedlib-py/ packages/test-cpp-exceptions/ packages/test-buffer/
+          parallelism: 3
           requires:
             - build-core
           filters:
@@ -818,6 +866,8 @@ workflows:
       - test-main:
           name: test-full-packages-chrome
           test-params: --runtime=chrome-no-host packages/_tests
+          parallelism: 3
+          split-by: test
           requires:
             - build-full-packages
           filters:
@@ -827,6 +877,8 @@ workflows:
       - test-main:
           name: test-full-packages-firefox
           test-params: --runtime=firefox-no-host packages/_tests
+          parallelism: 3
+          split-by: test
           requires:
             - build-full-packages
           filters:
@@ -836,6 +888,8 @@ workflows:
       - test-main:
           name: test-full-packages-node
           test-params: --runtime=node-no-host packages/_tests
+          parallelism: 2
+          split-by: test
           requires:
             - build-full-packages
           filters:
