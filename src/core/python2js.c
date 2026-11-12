@@ -343,8 +343,14 @@ _python2js_dict(ConversionContext* context, PyObject* x)
   _Py_IDENTIFIER(items);
   JsVal jsdict = context->dict_new(context);
   FAIL_IF_JS_ERROR(jsdict);
-  FAIL_IF_MINUS_ONE(
-    _python2js_add_to_cache(hiwire_get(context->cache), x, Jsv_novalue));
+  // dict_postprocess may replace jsdict with a different object, so until it
+  // has run, references to x get a placeholder and are filled in from the
+  // postprocess list. Without dict_postprocess, jsdict is the final result and
+  // we can cache it right away, like _python2js_sequence does.
+  FAIL_IF_MINUS_ONE(_python2js_add_to_cache(
+    hiwire_get(context->cache),
+    x,
+    context->dict_postprocess ? Jsv_novalue : jsdict));
 
   // PyDict_Next may or may not work on dict subclasses, so get the `.items()`
   // and iterate that instead. See issue #4636.
@@ -396,9 +402,9 @@ _python2js_dict(ConversionContext* context, PyObject* x)
   if (context->dict_postprocess) {
     jsdict = context->dict_postprocess(context, jsdict);
     FAIL_IF_JS_ERROR(jsdict);
+    FAIL_IF_MINUS_ONE(
+      _python2js_add_to_cache(hiwire_get(context->cache), x, jsdict));
   }
-  FAIL_IF_MINUS_ONE(
-    _python2js_add_to_cache(hiwire_get(context->cache), x, jsdict));
   return jsdict;
 }
 
