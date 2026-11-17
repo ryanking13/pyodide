@@ -31,8 +31,36 @@
     xfail: didn't correctly embed test data
 - test___all__
 - test__colorize
-- test__interpchannels
-- test__interpreters
+- test__interpchannels:
+    skip:
+    - '*ChannelTests.test_channel_list_interpreters_basic'  # pipe read at EOF raises EAGAIN
+    - '*ChannelTests.test_channel_list_interpreters_closed_send_end'  # pipe read at EOF raises EAGAIN
+    - '*ChannelTests.test_channel_list_interpreters_destroyed'  # pipe read at EOF raises EAGAIN
+    - '*ChannelTests.test_channel_list_interpreters_multiple'  # pipe read at EOF raises EAGAIN
+    - '*ChannelTests.test_channel_list_interpreters_released'  # pipe read at EOF raises EAGAIN
+    - '*ChannelTests.test_send_blocking_no_wait'  # needs threads
+    - '*ChannelTests.test_send_blocking_waiting'  # needs threads
+    - '*ChannelTests.test_send_buffer_blocking_no_wait'  # needs threads
+    - '*ChannelTests.test_send_buffer_blocking_waiting'  # needs threads
+    - '*ChannelTests.test_send_closed_while_waiting'  # needs threads
+    - '*ChannelTests.test_send_recv_different_interpreters'  # pipe read at EOF raises EAGAIN
+    - '*ChannelTests.test_send_recv_different_interpreters_and_threads'  # needs threads
+    - '*ChannelTests.test_send_recv_different_threads'  # needs threads
+    - '*ChannelTests.test_send_recv_same_interpreter'  # pipe read at EOF raises EAGAIN
+    - '*ChannelTests.test_send_timeout'  # needs threads
+- test__interpreters:
+    skip:
+    - '*CreateTests.test_in_thread'  # needs threads
+    - '*CreateTests.test_in_threaded_subinterpreter'  # needs threads
+    - '*DestroyTests.test_from_other_thread'  # needs threads
+    - '*DestroyTests.test_main'  # needs threads
+    - '*DestroyTests.test_still_running'  # needs threads
+    - '*ModuleTests.test_import_in_interpreter'  # pipe read at EOF raises EAGAIN
+    - '*RunFuncTests.test_in_thread'  # needs threads
+    - '*RunStringTests.test_already_running'  # needs threads
+    - '*RunStringTests.test_create_daemon_thread'  # pipe read at EOF raises EAGAIN
+    - '*RunStringTests.test_create_thread'  # pipe read at EOF raises EAGAIN
+    - '*RunStringTests.test_in_thread'  # needs threads
 - test__locale
 - test__opcode
 - test__osx_support:
@@ -141,7 +169,7 @@
 - test_capi.test_mem
 - test_capi.test_misc:
     skip:
-    - '*subinterpreter*'   # Should we disable _xxsubinterpreters in Setup.local?
+    - '*TestPendingCalls.test_isolated_subinterpreter'  # needs threads
 - test_capi.test_number
 - test_capi.test_object
 - test_capi.test_opt
@@ -282,7 +310,9 @@
 - test_ctypes.test_win32_com_foreign_func
 - test_ctypes.test_wintypes
 - test_curses
-- test_datetime
+- test_datetime:
+    skip:
+    - '*test_type_check_in_subinterp'  # loads _testcapi_datetime from _testcapi's .so, but _testcapi is built-in
 - test_dbm:
     xfail: dbm
 - test_dbm_dumb:
@@ -526,11 +556,59 @@
     - test_getsource_stdlib_decimal
 - test_int
 - test_int_literal
-- test_interpreters.test_api
-- test_interpreters.test_channels
+- test_interpreters.test_api:
+    skip:
+    - '*CreateTests.test_in_subinterpreter'  # test helper hardcodes EBADF == 9
+    - '*CreateTests.test_in_thread'  # needs threads
+    - '*GetCurrentTests.test_created_with_capi'  # test helper hardcodes EBADF == 9
+    - '*GetCurrentTests.test_idempotent'  # test helper hardcodes EBADF == 9
+    - '*GetCurrentTests.test_subinterpreter'  # test helper hardcodes EBADF == 9
+    - '*InterpreterObjectTests.test_whence'  # test helper hardcodes EBADF == 9
+    - '*ListAllTests.test_created_with_capi'  # test helper hardcodes EBADF == 9
+    - '*LowLevelTests.test_contextvars_missing'  # test helper hardcodes EBADF == 9
+    - '*LowLevelTests.test_exec'  # test helper hardcodes EBADF == 9
+    - '*LowLevelTests.test_get_current'  # test helper hardcodes EBADF == 9
+    - '*LowLevelTests.test_is_running'  # needs threads
+    - '*LowLevelTests.test_list_all'  # test helper hardcodes EBADF == 9
+    - '*LowLevelTests.test_whence'  # test helper hardcodes EBADF == 9
+    - '*TestInterpreterCall.test_call_in_thread'  # needs threads
+    - '*TestInterpreterClose.test_created_with_capi'  # needs threads, test helper hardcodes EBADF == 9
+    - '*TestInterpreterClose.test_from_current'  # test helper hardcodes EBADF == 9
+    - '*TestInterpreterClose.test_from_other_thread'  # needs threads
+    - '*TestInterpreterClose.test_main'  # needs threads
+    - '*TestInterpreterClose.test_remaining_threads'  # needs threads
+    - '*TestInterpreterClose.test_subthreads_still_running'  # needs threads
+    - '*TestInterpreterExec.test_in_thread'  # needs threads
+    - '*TestInterpreterExec.test_success'  # test helper hardcodes EBADF == 9
+    - '*TestInterpreterExec.test_with_background_threads_still_running'  # needs threads
+    - '*TestInterpreterIsRunning.test_created_with_capi'  # needs threads, test helper hardcodes EBADF == 9
+    - '*TestInterpreterIsRunning.test_from_subinterpreter'  # test helper hardcodes EBADF == 9
+    - '*TestInterpreterIsRunning.test_with_only_background_threads'  # needs threads
+    - '*TestInterpreterPrepareMain.test_created_with_capi'  # test helper hardcodes EBADF == 9
+    - '*TestInterpreterPrepareMain.test_dict'  # test helper hardcodes EBADF == 9
+    - '*TestInterpreterPrepareMain.test_dict_and_kwargs'  # test helper hardcodes EBADF == 9
+    - '*TestInterpreterPrepareMain.test_kwargs'  # test helper hardcodes EBADF == 9
+    - '*TestInterpreterPrepareMain.test_running'  # needs threads
+    - '*TestInterpreterPrepareMain.test_tuple'  # needs threads, test helper hardcodes EBADF == 9
+- test_interpreters.test_channels:
+    skip:
+    - '*TestSendRecv.test_send_buffer'  # needs threads
+    - '*TestSendRecv.test_send_cleared_with_subinterpreter'  # test helper hardcodes EBADF == 9
+    - '*TestSendRecv.test_send_cleared_with_subinterpreter_mixed'  # test helper hardcodes EBADF == 9
+    - '*TestSendRecv.test_send_cleared_with_subinterpreter_multiple'  # test helper hardcodes EBADF == 9
+    - '*TestSendRecv.test_send_recv_different_threads'  # needs threads
 - test_interpreters.test_lifecycle
-- test_interpreters.test_queues
-- test_interpreters.test_stress
+- test_interpreters.test_queues:
+    skip:
+    - '*QueueTests.test_shareable'  # test helper hardcodes EBADF == 9
+    - '*TestQueueOps.test_put_cleared_with_subinterpreter'  # test helper hardcodes EBADF == 9
+    - '*TestQueueOps.test_put_cleared_with_subinterpreter_mixed'  # test helper hardcodes EBADF == 9
+    - '*TestQueueOps.test_put_cleared_with_subinterpreter_multiple'  # test helper hardcodes EBADF == 9
+    - '*TestQueueOps.test_put_get_different_interpreters'  # test helper hardcodes EBADF == 9
+    - '*TestQueueOps.test_put_get_different_threads'  # needs threads
+- test_interpreters.test_stress:
+    skip:
+    - '*test_create_interpreter_no_memory'  # leaves _testcapi.set_nomemory() hooks installed, breaking later tests
 - test_io:
     skip:
     - test_recursive_repr

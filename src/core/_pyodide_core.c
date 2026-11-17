@@ -37,7 +37,10 @@ static struct PyModuleDef core_module_def = {
   PyModuleDef_HEAD_INIT,
   .m_name = "_pyodide_core",
   .m_doc = "Pyodide C builtins",
-  .m_size = -1,
+  // m_size = 0 (not -1) makes CPython call PyInit__pyodide_core again in each
+  // interpreter instead of copying the main interpreter's module dict, so the
+  // subinterpreter check below runs.
+  .m_size = 0,
 };
 
 void
@@ -78,6 +81,15 @@ EM_JS_DEPS(pyodide_core_deps, "stackAlloc,stackRestore,stackSave");
 PyObject*
 PyInit__pyodide_core(void)
 {
+  // The FFI state (types, caches, the JS-side API object) belongs to the main
+  // interpreter, so refuse to load in subinterpreters.
+  if (PyInterpreterState_Get() != PyInterpreterState_Main()) {
+    PyErr_SetString(PyExc_ImportError,
+                    "module _pyodide_core does not support loading in "
+                    "subinterpreters");
+    return NULL;
+  }
+
   FAIL_RETURN_VALUE(NULL);
   PyObject* core_module = NULL;
   ON_FAIL({ Py_CLEAR(core_module); });

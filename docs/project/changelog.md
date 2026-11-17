@@ -19,6 +19,11 @@ myst:
 
 ### General
 
+- {{ Enhancement }} The `concurrent.interpreters` module is now available.
+  Subinterpreters can run code in the current thread, but cannot use the
+  Pyodide FFI.
+  {pr}`TODO`
+
 - {{ Breaking }} Removed support for JSPI with Node 20. This support used an
   early version of the JSPI proposal. Node 20 is end of life since March 2026.
   {pr}`6465`

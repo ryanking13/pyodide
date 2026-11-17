@@ -19,6 +19,11 @@ _sqlite3 _sqlite/blob.c _sqlite/connection.c _sqlite/cursor.c _sqlite/microproto
 _lzma _lzmamodule.c -I../lzma/dist/include -L../lzma/dist/lib -llzma
 _zstd _zstd/_zstdmodule.c _zstd/compressor.c _zstd/decompressor.c _zstd/zstddict.c -I../zstd/dist/include -L../zstd/dist/lib -lzstd
 
+# configure marks these as n/a on Emscripten, but they work without threads.
+_interpreters _interpretersmodule.c
+_interpchannels _interpchannelsmodule.c
+_interpqueues _interpqueuesmodule.c
+
 *disabled*
 pwd
 _uuid

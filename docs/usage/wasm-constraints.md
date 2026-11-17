@@ -91,6 +91,16 @@ The following are present but cannot be imported due to a dependency on the term
 - pty
 - tty
 
+#### Subinterpreters
+
+`concurrent.interpreters` works, but only in the current thread:
+`Interpreter.exec()` and `Interpreter.call()` are supported, while
+`Interpreter.call_in_thread()` and `InterpreterPoolExecutor` need threads.
+Blocking queue operations without a timeout never return, since the other
+interpreter cannot run in the meantime. The Pyodide FFI (`js`,
+`pyodide.ffi`) is only available in the main interpreter. Most third-party C
+extensions, including numpy, cannot be imported in subinterpreters.
+
 #### Threading and multiprocessing
 
 Because Pyodide does not support threading or multiprocessing,

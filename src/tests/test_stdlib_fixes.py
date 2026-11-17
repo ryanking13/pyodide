@@ -166,3 +166,35 @@ def test_zipimport_check_non_stdlib(selenium):
     shutil.unpack_archive(zipfile, tmpdir, "zip")
     for f in tmpdir.glob("*"):
         assert f.name.removesuffix(".py") in stdlib_names, f.name
+
+
+@run_in_pyodide
+def test_subinterpreters(selenium):
+    from concurrent import interpreters
+
+    interp = interpreters.create()
+    try:
+        interp.exec("import math, json; x = math.sqrt(16)")
+        assert interp.call(pow, 2, 10) == 1024
+
+        queue = interpreters.create_queue()
+        interp.prepare_main(queue=queue)
+        interp.exec("queue.put(x)")
+        assert queue.get_nowait() == 4.0
+    finally:
+        interp.close()
+
+
+@pytest.mark.parametrize("config", ["isolated", "legacy"])
+@run_in_pyodide
+def test_subinterpreter_rejects_pyodide_core(selenium, config):
+    import _interpreters
+
+    interp = _interpreters.create(config)
+    try:
+        excinfo = _interpreters.exec(interp, "import _pyodide_core")
+        assert excinfo is not None
+        assert excinfo.type.__name__ == "ImportError"
+        assert "does not support loading in subinterpreters" in excinfo.msg
+    finally:
+        _interpreters.destroy(interp)
