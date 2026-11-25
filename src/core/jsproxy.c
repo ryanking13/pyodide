@@ -367,16 +367,27 @@ cacheable_attr_name(PyObject* attr)
   return _Py_IsImmortal(attr) ? attr : NULL;
 }
 
+// Also set *kind to JS_KIND_* bits for whether the result is a PyProxy and
+// whether it is a function, so that the caller doesn't need two more calls into
+// JavaScript.
 // clang-format off
 EM_JS_VAL(JsVal,
 JsProxy_GetAttr_js,
-(JsVal jsobj, const char* cname, PyObject* pyname),
+(JsVal jsobj, const char* cname, PyObject* pyname, int* kind),
 {
   const jskey = attrNameToJs(cname, pyname);
   const result = jsobj[jskey];
   if (result === undefined && !(jskey in jsobj)) {
     return Module.error;
   }
+  let k = 0;
+  if (typeof result === "function") {
+    k |= JS_KIND_FUNCTION;
+  }
+  if (API.isPyProxy(result)) {
+    k |= JS_KIND_PYPROXY;
+  }
+  DEREF_I32(kind, 0) = k;
   return result;
 });
 // clang-format on
@@ -532,8 +543,9 @@ JsProxy_GetAttr_helper(PyObject* self, PyObject* attr, bool is_method)
     FAIL();
   }
 
-  JsVal jsresult =
-    JsProxy_GetAttr_js(JsProxy_VAL(self), key, cacheable_attr_name(attr));
+  int kind = 0;
+  JsVal jsresult = JsProxy_GetAttr_js(
+    JsProxy_VAL(self), key, cacheable_attr_name(attr), &kind);
   if (JsvError_Check(jsresult)) {
     if (!PyErr_Occurred()) {
       PyErr_SetString(PyExc_AttributeError, key);
@@ -565,11 +577,12 @@ JsProxy_GetAttr_helper(PyObject* self, PyObject* attr, bool is_method)
   }
   // attr_sig might contain the result sig or it might be NULL.
   // TODO: maybe allow being strict and requiring that we get a sig?
-  if (pyproxy_Check(jsresult)) {
+  if (kind & JS_KIND_PYPROXY) {
     return js2python(jsresult);
   }
+  bool is_function = kind & JS_KIND_FUNCTION;
   if (is_method) {
-    if (!JsvFunction_Check(jsresult)) {
+    if (!is_function) {
       // Not callable, this should be an error...
       PyErr_SetString(PyExc_TypeError, "Expected callable");
       FAIL();
@@ -582,7 +595,7 @@ JsProxy_GetAttr_helper(PyObject* self, PyObject* attr, bool is_method)
     method_call_singleton->signature = Py_XNewRef(attr_sig);
     return pyresult;
   }
-  if (JsvFunction_Check(jsresult)) {
+  if (is_function) {
     return JsProxy_create_with_this(
       jsresult, JsProxy_VAL(self), attr_sig, false);
   } else if (attr_sig) {

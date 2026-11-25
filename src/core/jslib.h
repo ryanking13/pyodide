@@ -52,6 +52,15 @@ JsvError_Check(JsVal val);
 int
 JsvNoValue_Check(JsVal val);
 
+// ==================== Kinds of JavaScript values ====================
+
+// Bits that describe a JavaScript value. They are computed on the JavaScript
+// side by a function that already has the value at hand, and passed back to C
+// (as a return value or through an `int*`), so that C doesn't have to call into
+// JavaScript once per check.
+#define JS_KIND_PYPROXY (1 << 0)
+#define JS_KIND_FUNCTION (1 << 1)
+
 // ==================== Conversions between JsRef and JsVal ====================
 
 JsRef
