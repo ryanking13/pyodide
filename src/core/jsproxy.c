@@ -367,16 +367,27 @@ cacheable_attr_name(PyObject* attr)
   return _Py_IsImmortal(attr) ? attr : NULL;
 }
 
+// Also set *kind to JS_KIND_* bits for whether the result is a PyProxy and
+// whether it is a function, so that the caller doesn't need two more calls into
+// JavaScript.
 // clang-format off
 EM_JS_VAL(JsVal,
 JsProxy_GetAttr_js,
-(JsVal jsobj, const char* cname, PyObject* pyname),
+(JsVal jsobj, const char* cname, PyObject* pyname, int* kind),
 {
   const jskey = attrNameToJs(cname, pyname);
   const result = jsobj[jskey];
   if (result === undefined && !(jskey in jsobj)) {
     return Module.error;
   }
+  let k = 0;
+  if (typeof result === "function") {
+    k |= JS_KIND_FUNCTION;
+  }
+  if (API.isPyProxy(result)) {
+    k |= JS_KIND_PYPROXY;
+  }
+  DEREF_I32(kind, 0) = k;
   return result;
 });
 // clang-format on
@@ -532,8 +543,9 @@ JsProxy_GetAttr_helper(PyObject* self, PyObject* attr, bool is_method)
     FAIL();
   }
 
-  JsVal jsresult =
-    JsProxy_GetAttr_js(JsProxy_VAL(self), key, cacheable_attr_name(attr));
+  int kind = 0;
+  JsVal jsresult = JsProxy_GetAttr_js(
+    JsProxy_VAL(self), key, cacheable_attr_name(attr), &kind);
   if (JsvError_Check(jsresult)) {
     if (!PyErr_Occurred()) {
       PyErr_SetString(PyExc_AttributeError, key);
@@ -565,11 +577,12 @@ JsProxy_GetAttr_helper(PyObject* self, PyObject* attr, bool is_method)
   }
   // attr_sig might contain the result sig or it might be NULL.
   // TODO: maybe allow being strict and requiring that we get a sig?
-  if (pyproxy_Check(jsresult)) {
+  if (kind & JS_KIND_PYPROXY) {
     return js2python(jsresult);
   }
+  bool is_function = kind & JS_KIND_FUNCTION;
   if (is_method) {
-    if (!JsvFunction_Check(jsresult)) {
+    if (!is_function) {
       // Not callable, this should be an error...
       PyErr_SetString(PyExc_TypeError, "Expected callable");
       FAIL();
@@ -582,7 +595,7 @@ JsProxy_GetAttr_helper(PyObject* self, PyObject* attr, bool is_method)
     method_call_singleton->signature = Py_XNewRef(attr_sig);
     return pyresult;
   }
-  if (JsvFunction_Check(jsresult)) {
+  if (is_function) {
     return JsProxy_create_with_this(
       jsresult, JsProxy_VAL(self), attr_sig, false);
   } else if (attr_sig) {
@@ -753,12 +766,13 @@ handle_next_result(JsVal next_res, PyObject** result, int objmap_flags){
   FAIL_IF_MINUS_ONE(done);
   // If there was no "value", "idresult" will be jsundefined
   // so pyvalue will be set to Py_None.
-  *result = js2python_immutable(jsresult);
+  int kind = 0;
+  *result = js2python_immutable_kind(jsresult, &kind);
   if (!*result) {
     *result = JsProxy_create_objmap(jsresult, objmap_flags);
   }
   FAIL_IF_NULL(*result);
-  if(pyproxy_Check(jsresult)) {
+  if (kind & JS_KIND_PYPROXY) {
     Js_static_string(msg, "This borrowed proxy was automatically destroyed at the end"
                           " of a generator");
     destroy_proxy(jsresult, &msg);
@@ -1108,6 +1122,7 @@ _agen_handle_result_js_c(PyObject* set_result,
 {
   DECLARE_PY_OBJECT(pyvalue);
   DECLARE_PY_OBJECT(e);
+  int kind = 0;
 
   if (closing && status == 0) {
     // If closing, status should not be yielding.
@@ -1115,14 +1130,14 @@ _agen_handle_result_js_c(PyObject* set_result,
     goto return_error;
   }
 
-  pyvalue = js2python(jsvalue);
+  pyvalue = js2python_kind(jsvalue, &kind);
   if (pyvalue == NULL) {
     // hopefully this won't happen...
     PyErr_SetString(PyExc_RuntimeError, "Unable to get result");
     goto return_error;
   }
 
-  if (status == 1 && pyproxy_Check(jsvalue)) {
+  if (status == 1 && (kind & JS_KIND_PYPROXY)) {
     Js_static_string(
       msg,
       "This borrowed proxy was automatically destroyed at the end"

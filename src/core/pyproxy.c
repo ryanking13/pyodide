@@ -73,6 +73,29 @@ EM_JS(void, destroy_proxies, (JsVal proxies, Js_Identifier* msg_ptr), {
   }
 });
 
+// Same as pushing result onto proxies if pyproxy_Check(result) and then calling
+// destroy_proxies, but in one call into JavaScript.
+// clang-format off
+EM_JS(void,
+destroy_proxies_and_result,
+(JsVal result, JsVal proxies, Js_Identifier* msg_ptr),
+{
+  if (API.isPyProxy(result)) {
+    proxies.push(result);
+  }
+  if (proxies.length === 0) {
+    return;
+  }
+  let msg = undefined;
+  if (msg_ptr) {
+    msg = _JsvString_FromId(msg_ptr);
+  }
+  for (let px of proxies) {
+    Module.pyproxy_destroy(px, msg, false);
+  }
+});
+// clang-format on
+
 EM_JS(void, gc_register_proxies, (JsVal proxies), {
   for (let px of proxies) {
     Module.gc_register_proxy(Module.PyProxy_getAttrs(px).shared);

@@ -92,6 +92,28 @@ js2python(JsVal val)
   return js2python_js(val);
 }
 
+EM_JS_REF(PyObject*, js2python_immutable_kind, (JsVal value, int* kind), {
+  DEREF_I32(kind, 0) = API.isPyProxy(value) ? JS_KIND_PYPROXY : 0;
+  let result = Module.js2python_convertImmutable(value);
+  // clang-format off
+  if (result !== undefined) {
+    // clang-format on
+    return result;
+  }
+  return 0;
+});
+
+EM_JS_REF(PyObject*, js2python_kind, (JsVal value, int* kind), {
+  DEREF_I32(kind, 0) = API.isPyProxy(value) ? JS_KIND_PYPROXY : 0;
+  let result = Module.js2python_convertImmutable(value);
+  // clang-format off
+  if (result !== undefined) {
+    // clang-format on
+    return result;
+  }
+  return _JsProxy_create(value);
+})
+
 /**
  * Convert a JavaScript object to Python to a given depth. This is the
  * implementation of `toJs`.

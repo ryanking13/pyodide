@@ -41,6 +41,12 @@ pyproxy_AsPyObject(JsVal x);
 void
 destroy_proxies(JsVal proxies, Js_Identifier* msg);
 
+/**
+ * Destroy a list of PyProxies, and also result if it is a PyProxy.
+ */
+void
+destroy_proxies_and_result(JsVal result, JsVal proxies, Js_Identifier* msg);
+
 void
 gc_register_proxies(JsVal proxies);
 

@@ -347,11 +347,9 @@ maybe_destroy_proxies(JsVal jsval, JsVal proxies)
   if (JsvNull_Check(proxies)) {
     return;
   }
-  if (!JsvNull_Check(jsval) && pyproxy_Check(jsval)) {
-    // TODO: don't destroy proxies with roundtrip = true?
-    JsvArray_Push(proxies, jsval);
-  }
-  destroy_proxies(proxies, &PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL);
+  // TODO: don't destroy proxies with roundtrip = true?
+  destroy_proxies_and_result(
+    jsval, proxies, &PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL);
 }
 
 // Default js2py conversion.
@@ -522,6 +520,27 @@ EM_JS_VAL(JsVal, wrap_async_generator, (JsVal gen, JsVal proxies), {
 });
 // clang-format on
 
+// Return JS_KIND_PROMISE, JS_KIND_GENERATOR, JS_KIND_ASYNC_GENERATOR or 0.
+// These are the same checks as JsvPromise_Check, JsvGenerator_Check and
+// JsvAsyncGenerator_Check, in one call into JavaScript.
+// clang-format off
+EM_JS_NUM(int, call_result_kind, (JsVal res), {
+  if (isPromise(res)) {
+    return JS_KIND_PROMISE;
+  }
+  if ((typeof res === "object" && res !== null) || typeof res === "function") {
+    const tag = getTypeTag(res);
+    if (tag === "[object Generator]") {
+      return JS_KIND_GENERATOR;
+    }
+    if (tag === "[object AsyncGenerator]") {
+      return JS_KIND_ASYNC_GENERATOR;
+    }
+  }
+  return 0;
+});
+// clang-format on
+
 // Deep js2py conversion for function call result.
 static PyObject*
 Js2Py_func_default_call_result(PyObject* self, JsVal jsresult, JsVal proxies)
@@ -532,11 +551,12 @@ Js2Py_func_default_call_result(PyObject* self, JsVal jsresult, JsVal proxies)
   //    promise resolves.
   // 2. If the return value is a sync or async generator we extend the lifetime
   //    of the arguments until the generator returns.
-  bool is_promise = JsvPromise_Check(jsresult);
-  bool is_generator = !is_promise && JsvGenerator_Check(jsresult);
-  bool is_async_generator =
-    !is_promise && !is_generator && JsvAsyncGenerator_Check(jsresult);
-  bool destroy_args = !is_promise && !is_generator && !is_async_generator;
+  int kind = call_result_kind(jsresult);
+  FAIL_IF_MINUS_ONE(kind);
+  bool is_promise = kind == JS_KIND_PROMISE;
+  bool is_generator = kind == JS_KIND_GENERATOR;
+  bool is_async_generator = kind == JS_KIND_ASYNC_GENERATOR;
+  bool destroy_args = kind == 0;
   if (is_generator) {
     jsresult = wrap_generator(jsresult, proxies);
   } else if (is_async_generator) {
@@ -562,11 +582,9 @@ Js2Py_func_default_call_result(PyObject* self, JsVal jsresult, JsVal proxies)
     // If we succeeded and the result was a promise then we destroy the
     // arguments in async_done_callback instead of here. Otherwise, destroy the
     // arguments and return value now.
-    if (!JsvError_Check(jsresult) && pyproxy_Check(jsresult)) {
-      // TODO: don't destroy proxies with roundtrip = true?
-      JsvArray_Push(proxies, jsresult);
-    }
-    destroy_proxies(proxies, &PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL);
+    // TODO: don't destroy proxies with roundtrip = true?
+    destroy_proxies_and_result(
+      jsresult, proxies, &PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL);
   } else {
     gc_register_proxies(proxies);
   }
